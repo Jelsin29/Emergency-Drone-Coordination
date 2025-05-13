@@ -29,6 +29,8 @@ List *create_list(size_t datasize, int capacity) {
     List *list = malloc(sizeof(List));
     memset(list, 0, sizeof(List));
 
+    pthread_mutex_init(&list->lock, NULL);
+
     list->datasize = datasize;
     list->nodesize = sizeof(Node) + datasize;
 
@@ -238,6 +240,7 @@ int removenode(List *list, Node *node) {
  * @param list
  */
 void destroy(List *list) {
+    pthread_mutex_destroy(&list->lock);
     free(list->startaddress);
     memset(list, 0, sizeof(List));
     free(list);

@@ -16,6 +16,10 @@ int main() {
     helpedsurvivors = create_list(sizeof(Survivor), 1000); // Helped survivors
     drones = create_list(sizeof(Drone), 100);            // Active drones
 
+    pthread_mutex_init(&survivors->lock, NULL);
+    pthread_mutex_init(&helpedsurvivors->lock, NULL);
+    pthread_mutex_init(&drones->lock, NULL);
+
     // Initialize map (depends on survivors list for cells)
     init_map(40, 30); // Example: 40x30 grid
 
