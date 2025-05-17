@@ -57,6 +57,21 @@ test_list: $(LIST_TEST)
 test_sdl: $(SDL_TEST)
 	./$(SDL_TEST)
 
+# Run Valgrind on main program
+valgrind_main: $(MAIN)
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./$(MAIN)
+
+# Run Valgrind on list test
+valgrind_list: $(LIST_TEST)
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./$(LIST_TEST)
+
+# Run Valgrind on SDL test
+valgrind_sdl: $(SDL_TEST)
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./$(SDL_TEST)
+
+# Run Valgrind on all
+valgrind_all: valgrind_main valgrind_list valgrind_sdl
+
 # Clean up
 clean:
 	rm -f $(MAIN) $(OBJ) $(LIST_TEST) $(SDL_TEST) tests/*.o
@@ -72,4 +87,4 @@ view.o: view.c headers/view.h headers/drone.h headers/map.h headers/survivor.h
 tests/listtest.o: tests/listtest.c headers/list.h headers/survivor.h
 tests/sdltest.o: tests/sdltest.c
 
-.PHONY: all clean run test_list test_sdl
+.PHONY: all clean run test_list test_sdl valgrind_main valgrind_list valgrind_sdl valgrind_all

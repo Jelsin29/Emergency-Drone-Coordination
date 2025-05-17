@@ -54,8 +54,9 @@ List *create_list(size_t datasize, int capacity) {
     list->destroy = destroy;
     list->printlist = printlist;
     list->printlistfromtail = printlistfromtail;
-    return list;
+    return list;  // Added missing return statement
 }
+
 /**
  * @brief finds a memory cell in the mem area of list
  * @param list
@@ -99,8 +100,12 @@ static Node *find_memcell_fornode(List *list) {
 Node *add(List *list, void *data) {
     Node *node = NULL;
 
-    /*TODO use semaphores..!*/
+    // Lock the list during operation
+    pthread_mutex_lock(&list->lock);
+
+    /*Check capacity*/
     if (list->number_of_elements >= list->capacity) {
+        pthread_mutex_unlock(&list->lock);
         perror("list is full!");
         return NULL;
     }
@@ -128,11 +133,15 @@ Node *add(List *list, void *data) {
             list->tail = list->head;
         }
     } else {
+        pthread_mutex_unlock(&list->lock);
         perror("list is full!");
+        return NULL;
     }
 
+    pthread_mutex_unlock(&list->lock);
     return node;
 }
+
 /**
  * @brief finds the node with the value same as the mem pointed by
  * data and removes that node. it returns temp->node
@@ -141,11 +150,17 @@ Node *add(List *list, void *data) {
  * @return int: in success, it returns 0; if not found it returns 1.
  */
 int removedata(List *list, void *data) {
+    // Lock the list during operation
+    pthread_mutex_lock(&list->lock);
+    
     Node *temp = list->head;
     while (temp != NULL &&
            memcmp(temp->data, data, list->datasize) != 0) {
         temp = temp->next;
     }
+    
+    int result = 1; // Default: not found
+    
     if (temp != NULL) {
         Node *prevnode = temp->prev;
         Node *nextnode = temp->next;
@@ -156,13 +171,26 @@ int removedata(List *list, void *data) {
             nextnode->prev = prevnode;
         }
 
+        if (temp == list->head) {
+            list->head = nextnode;
+        }
+        
+        if (temp == list->tail) {
+            list->tail = prevnode;
+        }
+
         temp->next = NULL;
         temp->prev = NULL;
         temp->occupied = 0;
-        return 0;
+        list->number_of_elements--;
+        list->lastprocessed = temp;
+        result = 0; // Success
     }
-    return 1;
+    
+    pthread_mutex_unlock(&list->lock);
+    return result;
 }
+
 /**
  * @brief removes the node from list->head, and copies its data into
  * dest, also returns it.
@@ -172,25 +200,54 @@ int removedata(List *list, void *data) {
  * it returns NULL.
  */
 void *pop(List *list, void *dest) {
+    pthread_mutex_lock(&list->lock);
+    
+    void *result = NULL;
+    
     if (list->head != NULL) {
         Node *node = list->head;
-        if (removenode(list, node) == 0) {
+        
+        // Update the head pointer
+        list->head = node->next;
+        if (list->head != NULL) {
+            list->head->prev = NULL;
+        } else {
+            // List is now empty
+            list->tail = NULL;
+        }
+        
+        node->next = NULL;
+        node->prev = NULL;
+        node->occupied = 0;
+        list->number_of_elements--;
+        list->lastprocessed = node;
+        
+        // Copy data if destination is provided
+        if (dest != NULL) {
             memcpy(dest, node->data, list->datasize);
-            return dest;
+            result = dest;
         }
     }
-    dest = NULL;
-    return NULL;
+    
+    pthread_mutex_unlock(&list->lock);
+    return result;
 }
+
 /**
  * @brief returns the data stored in the head of the list
  * @param list
  * @return void*: returns the address of head->data
  */
 void *peek(List *list) {
-    if (list->head != NULL) return list->head->data;
-
-    return NULL;
+    pthread_mutex_lock(&list->lock);
+    
+    void *result = NULL;
+    if (list->head != NULL) {
+        result = list->head->data;
+    }
+    
+    pthread_mutex_unlock(&list->lock);
+    return result;
 }
 
 /**
@@ -202,21 +259,26 @@ void *peek(List *list) {
  * returns 1.
  */
 int removenode(List *list, Node *node) {
+    pthread_mutex_lock(&list->lock);
+    
+    int result = 1; // Default: failure
+    
     if (node != NULL) {
         Node *prevnode = node->prev;
         Node *nextnode = node->next;
+        
         if (prevnode != NULL) {
             prevnode->next = nextnode;
         }
+        
         if (nextnode != NULL) {
             nextnode->prev = prevnode;
         }
+        
         node->next = NULL;
         node->prev = NULL;
-        /*make unoccupied*/
         node->occupied = 0;
-
-        /*TODO use semaphore*/
+        
         list->number_of_elements--;
 
         /*update head, tail, lastprocess*/
@@ -227,11 +289,13 @@ int removenode(List *list, Node *node) {
         if (node == list->head) {
             list->head = nextnode;
         }
+        
         list->lastprocessed = node;
-        return 0;
+        result = 0; // Success
     }
-
-    return 1;
+    
+    pthread_mutex_unlock(&list->lock);
+    return result;
 }
 
 /**
@@ -242,7 +306,7 @@ int removenode(List *list, Node *node) {
 void destroy(List *list) {
     pthread_mutex_destroy(&list->lock);
     free(list->startaddress);
-    memset(list, 0, sizeof(List));
+    // Removed redundant memset before free
     free(list);
 }
 
@@ -253,12 +317,17 @@ void destroy(List *list) {
  * @param print: aprint function for the object data.
  */
 void printlist(List *list, void (*print)(void *)) {
+    pthread_mutex_lock(&list->lock);
+    
     Node *temp = list->head;
     while (temp != NULL) {
         print(temp->data);
         temp = temp->next;
     }
+    
+    pthread_mutex_unlock(&list->lock);
 }
+
 /**
  * @brief print list starting from tail
  *
@@ -266,9 +335,13 @@ void printlist(List *list, void (*print)(void *)) {
  * @param print: print function
  */
 void printlistfromtail(List *list, void (*print)(void *)) {
+    pthread_mutex_lock(&list->lock);
+    
     Node *temp = list->tail;
     while (temp != NULL) {
         print(temp->data);
         temp = temp->prev;
     }
+    
+    pthread_mutex_unlock(&list->lock);
 }

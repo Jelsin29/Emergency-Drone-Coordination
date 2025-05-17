@@ -7,6 +7,7 @@
 Map map;
 
 void init_map(int height, int width) {
+    printf("DEBUG init_map - Creating map with height=%d, width=%d\n", height, width);
     map.height = height;
     map.width = width;
 
