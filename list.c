@@ -1,12 +1,11 @@
 /**
  * @file list.c
  * @author adaskin
- * @brief  a simple doubly linked list stored in an array(contigous
+ * @brief  a simple doubly linked list stored in an array(contiguous
  * memory). this program is written for educational purposes 
  * and may include some bugs.
- * TODO: add synchronization
- * @version 0.1
- * @date 2024-04-21
+ * @version 0.2
+ * @date 2024-05-19
  *
  * @copyright Copyright (c) 2024
  *
@@ -15,7 +14,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <semaphore.h>
 
+// Forward declarations for internal functions
+static Node *find_memcell_fornode(List *list);
+static Node *get_free_node(List *list);
 
 /**
  * @brief Create a list object, allocates new memory for list, and
@@ -27,22 +30,49 @@
  */
 List *create_list(size_t datasize, int capacity) {
     List *list = malloc(sizeof(List));
+    if (!list) {
+        perror("Failed to allocate memory for list");
+        return NULL;
+    }
+    
     memset(list, 0, sizeof(List));
 
+    // Initialize mutex
     pthread_mutex_init(&list->lock, NULL);
+    
+    // Initialize semaphores for overflow/underflow protection
+    sem_init(&list->elements_sem, 0, 0);  // Initially empty
+    sem_init(&list->spaces_sem, 0, capacity);  // Initially all spaces available
 
     list->datasize = datasize;
     list->nodesize = sizeof(Node) + datasize;
 
     list->startaddress = malloc(list->nodesize * capacity);
-    list->endaddress =
-        list->startaddress + (list->nodesize * capacity);
+    if (!list->startaddress) {
+        perror("Failed to allocate memory for list nodes");
+        free(list);
+        return NULL;
+    }
+    
+    list->endaddress = list->startaddress + (list->nodesize * capacity);
     memset(list->startaddress, 0, list->nodesize * capacity);
 
     list->lastprocessed = (Node *)list->startaddress;
+    list->free_list = NULL;  // Initialize the free list to NULL
 
     list->number_of_elements = 0;
     list->capacity = capacity;
+    
+    // Initialize all nodes as free and add them to the free list
+    for (int i = 0; i < capacity; i++) {
+        Node *node = (Node *)(list->startaddress + (i * list->nodesize));
+        node->occupied = 0;
+        node->next = list->free_list;
+        node->prev = NULL;
+        if (list->free_list)
+            list->free_list->prev = node;
+        list->free_list = node;
+    }
 
     /*ops*/
     list->self = list;
@@ -54,7 +84,7 @@ List *create_list(size_t datasize, int capacity) {
     list->destroy = destroy;
     list->printlist = printlist;
     list->printlistfromtail = printlistfromtail;
-    return list;  // Added missing return statement
+    return list;
 }
 
 /**
@@ -90,6 +120,27 @@ static Node *find_memcell_fornode(List *list) {
 }
 
 /**
+ * @brief Gets a node from the free list or finds one in memory
+ * @param list
+ * @return Node*
+ */
+static Node *get_free_node(List *list) {
+    // First try to get a node from the free list
+    if (list->free_list) {
+        Node *node = list->free_list;
+        list->free_list = node->next;
+        if (list->free_list)
+            list->free_list->prev = NULL;
+        node->next = NULL;
+        node->prev = NULL;
+        return node;
+    }
+    
+    // If free list is empty, use the original approach
+    return find_memcell_fornode(list);
+}
+
+/**
  * @brief find an unoccupied node in the array, and makes a node with
  * the given data and ADDS it to the HEAD of the list
  * @param list:
@@ -100,18 +151,25 @@ static Node *find_memcell_fornode(List *list) {
 Node *add(List *list, void *data) {
     Node *node = NULL;
 
+    // Wait for an available space (semaphore)
+    if (sem_wait(&list->spaces_sem) != 0) {
+        perror("sem_wait failed in add");
+        return NULL;
+    }
+
     // Lock the list during operation
     pthread_mutex_lock(&list->lock);
 
-    /*Check capacity*/
+    /*Check capacity (redundant with semaphore but kept for safety)*/
     if (list->number_of_elements >= list->capacity) {
         pthread_mutex_unlock(&list->lock);
+        sem_post(&list->spaces_sem); // Release the space we waited for
         perror("list is full!");
         return NULL;
     }
 
-    /*first find an unoccupied memcell and insert into it*/
-    node = find_memcell_fornode(list);
+    /*Get a free node from the free list or memory*/
+    node = get_free_node(list);
 
     if (node != NULL) {
         /*create_node*/
@@ -132,9 +190,13 @@ Node *add(List *list, void *data) {
         if (list->tail == NULL) {
             list->tail = list->head;
         }
+        
+        // Signal that we have an element
+        sem_post(&list->elements_sem);
     } else {
         pthread_mutex_unlock(&list->lock);
-        perror("list is full!");
+        sem_post(&list->spaces_sem); // Release the space we waited for
+        perror("Failed to find free node!");
         return NULL;
     }
 
@@ -179,12 +241,20 @@ int removedata(List *list, void *data) {
             list->tail = prevnode;
         }
 
-        temp->next = NULL;
+        // Add the node to the free list
+        temp->next = list->free_list;
         temp->prev = NULL;
+        if (list->free_list)
+            list->free_list->prev = temp;
+        list->free_list = temp;
+        
         temp->occupied = 0;
         list->number_of_elements--;
         list->lastprocessed = temp;
         result = 0; // Success
+        
+        // Signal that we have a space
+        sem_post(&list->spaces_sem);
     }
     
     pthread_mutex_unlock(&list->lock);
@@ -200,6 +270,12 @@ int removedata(List *list, void *data) {
  * it returns NULL.
  */
 void *pop(List *list, void *dest) {
+    // Wait for an element to be available
+    if (sem_wait(&list->elements_sem) != 0) {
+        perror("sem_wait failed in pop");
+        return NULL;
+    }
+    
     pthread_mutex_lock(&list->lock);
     
     void *result = NULL;
@@ -216,8 +292,13 @@ void *pop(List *list, void *dest) {
             list->tail = NULL;
         }
         
-        node->next = NULL;
+        // Add the node to the free list
+        node->next = list->free_list;
         node->prev = NULL;
+        if (list->free_list)
+            list->free_list->prev = node;
+        list->free_list = node;
+        
         node->occupied = 0;
         list->number_of_elements--;
         list->lastprocessed = node;
@@ -227,6 +308,12 @@ void *pop(List *list, void *dest) {
             memcpy(dest, node->data, list->datasize);
             result = dest;
         }
+        
+        // Signal that we have a space
+        sem_post(&list->spaces_sem);
+    } else {
+        // Should never happen due to semaphore, but just in case
+        sem_post(&list->elements_sem); // Put the element back since we didn't use it
     }
     
     pthread_mutex_unlock(&list->lock);
@@ -275,8 +362,13 @@ int removenode(List *list, Node *node) {
             nextnode->prev = prevnode;
         }
         
-        node->next = NULL;
+        // Add the node to the free list
+        node->next = list->free_list;
         node->prev = NULL;
+        if (list->free_list)
+            list->free_list->prev = node;
+        list->free_list = node;
+        
         node->occupied = 0;
         
         list->number_of_elements--;
@@ -292,6 +384,9 @@ int removenode(List *list, Node *node) {
         
         list->lastprocessed = node;
         result = 0; // Success
+        
+        // Signal that we have a space
+        sem_post(&list->spaces_sem);
     }
     
     pthread_mutex_unlock(&list->lock);
@@ -305,8 +400,14 @@ int removenode(List *list, Node *node) {
  */
 void destroy(List *list) {
     pthread_mutex_destroy(&list->lock);
-    free(list->startaddress);
-    // Removed redundant memset before free
+    sem_destroy(&list->elements_sem);
+    sem_destroy(&list->spaces_sem);
+    
+    if (list->startaddress) {
+        free(list->startaddress);
+        list->startaddress = NULL;
+    }
+    
     free(list);
 }
 

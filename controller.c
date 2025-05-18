@@ -115,14 +115,14 @@ int main() {
     }
     printf("SDL window initialized successfully\n");
     
-    // Test grid drawing
+    // Test grid drawing - reduced delay
     printf("Phase 1: Testing grid drawing...\n");
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderClear(renderer);
     draw_grid();
     SDL_RenderPresent(renderer);
-    printf("Grid drawn, pausing for 2 seconds...\n");
-    sleep(2);
+    printf("Grid drawn\n");
+    // Removed the 2-second sleep here
     
     // Initialize drones
     printf("Initializing drones...\n");
@@ -151,9 +151,7 @@ int main() {
     }
     printf("AI controller thread started\n");
     
-    // Wait for survivor generator to create initial survivors
-    printf("Waiting for survivors to be generated...\n");
-    sleep(3);
+    // Removed the 3-second sleep here - start main loop immediately
     
     // Start main loop
     printf("Starting main loop...\n");

@@ -57,43 +57,27 @@ void cleanup_survivors() {
 }
 
 void *survivor_generator(void *args) {
-    (void)args;  // Unused parameter
     
     printf("Survivor generator started\n");
     
     // Wait a moment for the system to stabilize
-    sleep(2);
-    
-    // Define fixed positions to use first (but don't create them immediately)
-    int fixed_positions[5][2] = {
-        {5, 5},   // Top left
-        {5, 25},  // Top right
-        {20, 15}, // Center
-        {35, 5},  // Bottom left
-        {35, 25}  // Bottom right
-    };
+    sleep(1);
     
     // Seed random number generator
     srand(time(NULL));
     
-    // Start with zero survivors
-    printf("Beginning survivor generation, world starts empty\n");
+    printf("Beginning rapid survivor generation...\n");
     
-    // First generate the fixed-position survivors with delay between each
-    for (int i = 0; i < 5; i++) {
-        // Wait 2-4 seconds between spawning each survivor
-        int delay = (rand() % 3) + 2;
-        sleep(delay);
-        
-        // Lock the mutex before modifying the survivor array
+    // Initial batch of survivors (10 at once)
+    for (int i = 0; i < 10; i++) {
         pthread_mutex_lock(&survivors_mutex);
         
-        // Only generate if there's space in the array
         if (num_survivors < MAX_SURVIVORS) {
-            int x = fixed_positions[i][0];
-            int y = fixed_positions[i][1];
+            // Generate random coordinates
+            int x = rand() % map.height;
+            int y = rand() % map.width;
             
-            // Initialize new survivor at fixed position
+            // Initialize new survivor
             survivor_array[num_survivors].coord.x = x;
             survivor_array[num_survivors].coord.y = y;
             sprintf(survivor_array[num_survivors].info, "SURV-%d", num_survivors);
@@ -104,23 +88,26 @@ void *survivor_generator(void *args) {
             time(&t);
             localtime_r(&t, &survivor_array[num_survivors].discovery_time);
             
-            printf("Created survivor at fixed position (%d,%d)\n", x, y);
+            printf("Created initial survivor %d at (%d,%d)\n", 
+                   num_survivors, x, y);
             
             // Move to next array slot
             num_survivors++;
         }
         
-        // Unlock after modifying the array
         pthread_mutex_unlock(&survivors_mutex);
+        
+        // Very small delay between initial survivors
+        usleep(100000); // Just 0.1 seconds between spawns
     }
     
-    printf("Fixed position survivors created, continuing with random generation\n");
+    printf("Initial batch created, continuing with rapid generation\n");
     
-    // Now continue with random generation
+    // Constant rapid generation
     while (1) {
-        // Wait 5-10 seconds before generating a new survivor
-        int delay = (rand() % 6) + 5;
-        sleep(delay);
+        // Very short delay between spawns (0.5-1.5 seconds)
+        int delay_ms = (rand() % 1000) + 500;
+        usleep(delay_ms * 1000);
         
         // Lock the mutex before checking/modifying the array
         pthread_mutex_lock(&survivors_mutex);
@@ -142,13 +129,37 @@ void *survivor_generator(void *args) {
             time(&t);
             localtime_r(&t, &survivor_array[num_survivors].discovery_time);
             
-            printf("Created random survivor %d at (%d,%d)\n", 
+            printf("Created rapid survivor %d at (%d,%d)\n", 
                    num_survivors, x, y);
             
             // Move to next array slot
             num_survivors++;
         } else {
             printf("Survivor array full (%d survivors)\n", num_survivors);
+            
+            // If the array is full, we can reset some rescued survivors to make space
+            // Optional: Recycle some rescued survivors
+            int recycled = 0;
+            for (int i = 0; i < num_survivors && recycled < 5; i++) {
+                if (survivor_array[i].status == 2) { // If rescued
+                    // Generate new coordinates
+                    int x = rand() % map.height;
+                    int y = rand() % map.width;
+                    
+                    // Reset this survivor to a new location
+                    survivor_array[i].coord.x = x;
+                    survivor_array[i].coord.y = y;
+                    survivor_array[i].status = 0; // Waiting for help again
+                    
+                    // Update time
+                    time_t t;
+                    time(&t);
+                    localtime_r(&t, &survivor_array[i].discovery_time);
+                    
+                    printf("Recycled survivor %d at new position (%d,%d)\n", i, x, y);
+                    recycled++;
+                }
+            }
         }
         
         // Unlock after modifying the array
