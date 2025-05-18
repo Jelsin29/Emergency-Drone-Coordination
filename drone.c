@@ -11,62 +11,123 @@
 Drone *drone_fleet = NULL;
 int num_drones = 10; // Default fleet size
 
+/**
+ * Initialize the drone fleet
+ * Creates drone objects and starts their threads
+ */
 void initialize_drones() {
+    // Allocate memory for drone fleet
     drone_fleet = malloc(sizeof(Drone) * num_drones);
+    if (!drone_fleet) {
+        perror("Failed to allocate drone fleet");
+        exit(EXIT_FAILURE);
+    }
+    
+    // Seed random number generator
     srand(time(NULL));
 
+    // Initialize each drone
     for(int i = 0; i < num_drones; i++) {
+        // Set basic properties
         drone_fleet[i].id = i;
         drone_fleet[i].status = IDLE;
-        drone_fleet[i].coord = (Coord){rand() % map.width, rand() % map.height};
-        drone_fleet[i].target = drone_fleet[i].coord; // Initial target=current position
+        
+        // Random starting position within map boundaries
+        drone_fleet[i].coord.x = rand() % map.height;
+        drone_fleet[i].coord.y = rand() % map.width;
+        
+        // Initial target is current position
+        drone_fleet[i].target = drone_fleet[i].coord;
+        
+        // Initialize mutex
         pthread_mutex_init(&drone_fleet[i].lock, NULL);
+    }
+    
+    // Start threads
+    for(int i = 0; i < num_drones; i++) {
+        int result = pthread_create(&drone_fleet[i].thread_id, NULL, drone_behavior, &drone_fleet[i]);
+        if (result != 0) {
+            fprintf(stderr, "Error creating thread for drone %d: %s\n", 
+                   i, strerror(result));
+        }
         
-        //TODO in Phase-2 you should use this for client drones,
-        // Add to global drone list
-        pthread_mutex_lock(&drones->lock);
-        drones->add(drones, &drone_fleet[i]); 
-        pthread_mutex_unlock(&drones->lock);
-        
-        // Create thread
-        pthread_create(&drone_fleet[i].thread_id, NULL, drone_behavior, &drone_fleet[i]);
+        // Small sleep to avoid overwhelming the system with thread creation
+        usleep(10000); // 10ms delay between thread creation
     }
 }
 
+/**
+ * Drone behavior function - runs in a separate thread for each drone
+ * @param arg Pointer to the drone object this thread controls
+ * @return NULL
+ */
 void* drone_behavior(void *arg) {
     Drone *d = (Drone*)arg;
     
+    // Make this thread cancelable
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+    
     while(1) {
+        // Keep the lock for the minimum time possible
         pthread_mutex_lock(&d->lock);
         
-        if(d->status == ON_MISSION) {
-            // Move toward target (1 cell per iteration)
-            if(d->coord.x < d->target.x) d->coord.x++;
-            else if(d->coord.x > d->target.x) d->coord.x--;
+        DroneStatus status = d->status;
+        Coord current = d->coord;
+        Coord target = d->target;
+        
+        // Only update coordinates if on mission
+        if(status == ON_MISSION) {
+            // Calculate new position (move one step in each iteration)
+            Coord new_pos = current;
             
-            if(d->coord.y < d->target.y) d->coord.y++;
-            else if(d->coord.y > d->target.y) d->coord.y--;
-
-            // Check mission completion
-            if(d->coord.x == d->target.x && d->coord.y == d->target.y) {
-                d->status = IDLE;
-                printf("Drone %d: Mission completed!\n", d->id);
+            // Move in X direction
+            if(new_pos.x < target.x) new_pos.x++;
+            else if(new_pos.x > target.x) new_pos.x--;
+            
+            // Move in Y direction
+            if(new_pos.y < target.y) new_pos.y++;
+            else if(new_pos.y > target.y) new_pos.y--;
+            
+            // Check if position actually changed
+            if(new_pos.x != current.x || new_pos.y != current.y) {
+                // Update position
+                d->coord = new_pos;
             }
+            
+            // Update timestamp
+            time_t t;
+            time(&t);
+            localtime_r(&t, &d->last_update);
         }
         
         pthread_mutex_unlock(&d->lock);
-        sleep(1); // Update every second
+        
+        // Sleep to control drone movement speed
+        usleep(300000); // 300ms
     }
+    
     return NULL;
 }
 
-
-
-
+/**
+ * Clean up drone resources
+ * Cancels threads, destroys mutexes, and frees memory
+ */
 void cleanup_drones() {
+    if (!drone_fleet) {
+        return; // Nothing to clean up
+    }
+    
     for(int i = 0; i < num_drones; i++) {
+        // Cancel thread
         pthread_cancel(drone_fleet[i].thread_id);
+        
+        // Cleanup mutex
         pthread_mutex_destroy(&drone_fleet[i].lock);
     }
+    
+    // Free memory
     free(drone_fleet);
+    drone_fleet = NULL;
 }

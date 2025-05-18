@@ -2,8 +2,8 @@
  * @file list.h
  * @author adaskin
  * @brief 
- * @version 0.1
- * @date 2024-04-21
+ * @version 0.2
+ * @date 2024-05-19
  * 
  * @copyright Copyright (c) 2024
  */
@@ -26,16 +26,18 @@ typedef struct node {
 typedef struct list {
     Node *head;
     Node *tail;
-    int number_of_elements; /*TODO: make semaphore*/
-    int capacity;           /*TODO make semaphore*/
+    int number_of_elements;
+    int capacity;
     int datasize; /*only data[] size in the node, e.g. sizeof(Survivor)*/
-    int nodesize;     /*this includes next, prev pointer sizes*/
+    int nodesize; /*this includes next, prev pointer sizes*/
     char *startaddress;
     char *endaddress;
     Node *lastprocessed;
     Node *free_list; /* Track freed nodes */
 
     pthread_mutex_t lock; /*controls all access to the list*/
+    sem_t elements_sem;   /*counts number of elements (for underflow protection)*/
+    sem_t spaces_sem;     /*counts available spaces (for overflow protection)*/
     
     /*ops on the list*/
     Node *(*add)(struct list *list, void *data);
@@ -60,5 +62,4 @@ void destroy(List *list);
 void printlist(List *list, void (*print)(void*));
 void printlistfromtail(List *list, void (*print)(void*));
 
-#endif
-// LIST_H
+#endif // LIST_H
