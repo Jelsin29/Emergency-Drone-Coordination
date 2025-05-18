@@ -64,7 +64,7 @@ void *survivor_generator(void *args) {
     // Wait a moment for the system to stabilize
     sleep(2);
     
-    // Create survivors at several fixed positions first
+    // Define fixed positions to use first (but don't create them immediately)
     int fixed_positions[5][2] = {
         {5, 5},   // Top left
         {5, 25},  // Top right
@@ -73,44 +73,52 @@ void *survivor_generator(void *args) {
         {35, 25}  // Bottom right
     };
     
-    printf("Creating 5 fixed test survivors\n");
-    
-    // Lock the mutex before modifying the survivor array
-    pthread_mutex_lock(&survivors_mutex);
-    
-    // Create the fixed survivors
-    for (int i = 0; i < 5 && num_survivors < MAX_SURVIVORS; i++) {
-        int x = fixed_positions[i][0];
-        int y = fixed_positions[i][1];
-        
-        // Initialize new survivor
-        survivor_array[num_survivors].coord.x = x;
-        survivor_array[num_survivors].coord.y = y;
-        sprintf(survivor_array[num_survivors].info, "SURV-%d", num_survivors);
-        survivor_array[num_survivors].status = 0; // Waiting for help
-        
-        // Set time
-        time_t t;
-        time(&t);
-        localtime_r(&t, &survivor_array[num_survivors].discovery_time);
-        
-        printf("Created fixed survivor at (%d,%d)\n", x, y);
-        
-        // Move to next array slot
-        num_survivors++;
-    }
-    
-    // Unlock after modifying the array
-    pthread_mutex_unlock(&survivors_mutex);
-    
-    printf("Fixed survivors created, entering random generation mode\n");
-    
     // Seed random number generator
     srand(time(NULL));
     
-    // Now randomly generate survivors periodically
+    // Start with zero survivors
+    printf("Beginning survivor generation, world starts empty\n");
+    
+    // First generate the fixed-position survivors with delay between each
+    for (int i = 0; i < 5; i++) {
+        // Wait 2-4 seconds between spawning each survivor
+        int delay = (rand() % 3) + 2;
+        sleep(delay);
+        
+        // Lock the mutex before modifying the survivor array
+        pthread_mutex_lock(&survivors_mutex);
+        
+        // Only generate if there's space in the array
+        if (num_survivors < MAX_SURVIVORS) {
+            int x = fixed_positions[i][0];
+            int y = fixed_positions[i][1];
+            
+            // Initialize new survivor at fixed position
+            survivor_array[num_survivors].coord.x = x;
+            survivor_array[num_survivors].coord.y = y;
+            sprintf(survivor_array[num_survivors].info, "SURV-%d", num_survivors);
+            survivor_array[num_survivors].status = 0; // Waiting for help
+            
+            // Set time
+            time_t t;
+            time(&t);
+            localtime_r(&t, &survivor_array[num_survivors].discovery_time);
+            
+            printf("Created survivor at fixed position (%d,%d)\n", x, y);
+            
+            // Move to next array slot
+            num_survivors++;
+        }
+        
+        // Unlock after modifying the array
+        pthread_mutex_unlock(&survivors_mutex);
+    }
+    
+    printf("Fixed position survivors created, continuing with random generation\n");
+    
+    // Now continue with random generation
     while (1) {
-        // Wait between 5-10 seconds before generating a new survivor
+        // Wait 5-10 seconds before generating a new survivor
         int delay = (rand() % 6) + 5;
         sleep(delay);
         

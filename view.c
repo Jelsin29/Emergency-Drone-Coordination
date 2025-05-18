@@ -194,12 +194,18 @@ int draw_map() {
     draw_grid();
     
     // Update the window title with current statistics
+    pthread_mutex_lock(&survivors_mutex);
+    int survivor_count = num_survivors;
+    pthread_mutex_unlock(&survivors_mutex);
+    
+    pthread_mutex_lock(&helpedsurvivors->lock);
+    int helped_count = helpedsurvivors->number_of_elements;
+    pthread_mutex_unlock(&helpedsurvivors->lock);
+    
     char title[100];
     snprintf(title, sizeof(title), 
              "Drone Simulator | Survivors: %d | Helped: %d | Drones: %d",
-             survivors ? survivors->number_of_elements : 0,
-             helpedsurvivors ? helpedsurvivors->number_of_elements : 0,
-             num_drones);
+             survivor_count, helped_count, num_drones);
     SDL_SetWindowTitle(window, title);
 
     // Present the rendered frame
@@ -208,64 +214,31 @@ int draw_map() {
 }
 
 void draw_diagnostic() {
-    // Draw the red X and green border as before
-    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);  // Red
+    // Draw a large red X across the entire window
+    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
     SDL_RenderDrawLine(renderer, 0, 0, window_width, window_height);
     SDL_RenderDrawLine(renderer, 0, window_height, window_width, 0);
     
-    SDL_Rect border = {0, 0, window_width-1, window_height-1};
-    SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);  // Green
-    SDL_RenderDrawRect(renderer, &border);
+    // Draw a bright green border around the entire window
+    SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
+    SDL_RenderDrawLine(renderer, 0, 0, window_width, 0);
+    SDL_RenderDrawLine(renderer, window_width, 0, window_width, window_height);
+    SDL_RenderDrawLine(renderer, window_width, window_height, 0, window_height);
+    SDL_RenderDrawLine(renderer, 0, window_height, 0, 0);
     
-    // Draw HUGE squares for each drone in fixed screen positions
-    int colors[5][3] = {
-        {255, 255, 255},  // White
-        {255, 255, 0},    // Yellow
-        {0, 255, 255},    // Cyan
-        {255, 0, 255},    // Magenta
-        {128, 128, 255}   // Light blue
-    };
-    
-    // Draw drones in a row at the top
-    if (drone_fleet != NULL) {
-        for (int i = 0; i < num_drones && i < 10; i++) {
-            // Pick a color based on drone index
-            int colorIdx = i % 5;
-            SDL_SetRenderDrawColor(renderer, 
-                                 colors[colorIdx][0], 
-                                 colors[colorIdx][1], 
-                                 colors[colorIdx][2], 
-                                 255);
-            
-            // Draw a square in a fixed position across the top of the screen
-            SDL_Rect rect = {
-                50 + i * 60,  // Fixed X position 
-                50,           // Fixed Y position at top
-                50,           // Large size
-                50            // Large size
-            };
-            SDL_RenderFillRect(renderer, &rect);
-            
-            printf("Drawing fixed drone %d at screen position (%d,%d)\n", 
-                  i, 50 + i * 60, 50);
-        }
-    }
-    
-    // Draw survivors in a row at the bottom
+    // Draw diagnostic survivors
     for (int i = 0; i < 5; i++) {
-        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);  // Red
+        int x, y;
+        switch (i) {
+            case 0: x = 5; y = 5; break;    // Top left
+            case 1: x = 5; y = 25; break;   // Top right
+            case 2: x = 20; y = 15; break;  // Center
+            case 3: x = 35; y = 5; break;   // Bottom left
+            case 4: x = 35; y = 25; break;  // Bottom right
+        }
         
-        // Draw a square in a fixed position across the bottom of the screen
-        SDL_Rect rect = {
-            100 + i * 100,      // Fixed X position
-            window_height - 100, // Fixed Y position at bottom
-            70,                  // Large size
-            70                   // Large size
-        };
-        SDL_RenderFillRect(renderer, &rect);
-        
-        printf("Drawing fixed survivor %d at screen position (%d,%d)\n", 
-              i, 100 + i * 100, window_height - 100);
+        draw_cell(x, y, RED);
+        printf("Drawing diagnostic survivor at position (%d,%d)\n", x, y);
     }
 }
 
