@@ -11,9 +11,11 @@
 Drone *drone_fleet = NULL;
 int num_drones = 10; // Default fleet size
 
+/**
+ * Initialize the drone fleet
+ * Creates drone objects and starts their threads
+ */
 void initialize_drones() {
-    printf("Initializing %d drones...\n", num_drones);
-    
     // Allocate memory for drone fleet
     drone_fleet = malloc(sizeof(Drone) * num_drones);
     if (!drone_fleet) {
@@ -26,8 +28,6 @@ void initialize_drones() {
 
     // Initialize each drone
     for(int i = 0; i < num_drones; i++) {
-        printf("Initializing drone %d...\n", i);
-        
         // Set basic properties
         drone_fleet[i].id = i;
         drone_fleet[i].status = IDLE;
@@ -41,12 +41,7 @@ void initialize_drones() {
         
         // Initialize mutex
         pthread_mutex_init(&drone_fleet[i].lock, NULL);
-        
-        printf("Drone %d initialized at (%d,%d)\n", 
-               i, drone_fleet[i].coord.x, drone_fleet[i].coord.y);
     }
-    
-    printf("All drones initialized, SKIPPING adding to global list\n");
     
     // Start threads
     for(int i = 0; i < num_drones; i++) {
@@ -54,21 +49,20 @@ void initialize_drones() {
         if (result != 0) {
             fprintf(stderr, "Error creating thread for drone %d: %s\n", 
                    i, strerror(result));
-        } else {
-            printf("Drone %d: Thread started\n", i);
         }
         
         // Small sleep to avoid overwhelming the system with thread creation
         usleep(10000); // 10ms delay between thread creation
     }
-    
-    printf("All drone threads started\n");
 }
 
+/**
+ * Drone behavior function - runs in a separate thread for each drone
+ * @param arg Pointer to the drone object this thread controls
+ * @return NULL
+ */
 void* drone_behavior(void *arg) {
     Drone *d = (Drone*)arg;
-    
-    printf("Drone %d: Thread starting behavior with status %d\n", d->id, d->status);
     
     // Make this thread cancelable
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
@@ -99,11 +93,6 @@ void* drone_behavior(void *arg) {
             if(new_pos.x != current.x || new_pos.y != current.y) {
                 // Update position
                 d->coord = new_pos;
-                
-                printf("Drone %d: Moving from (%d,%d) to (%d,%d), target: (%d,%d)\n", 
-                       d->id, current.x, current.y, 
-                       new_pos.x, new_pos.y, 
-                       target.x, target.y);
             }
             
             // Update timestamp
@@ -114,23 +103,23 @@ void* drone_behavior(void *arg) {
         
         pthread_mutex_unlock(&d->lock);
         
-        // Sleep to control drone movement speed (shorter for more responsive movement)
+        // Sleep to control drone movement speed
         usleep(300000); // 300ms
     }
     
     return NULL;
 }
 
+/**
+ * Clean up drone resources
+ * Cancels threads, destroys mutexes, and frees memory
+ */
 void cleanup_drones() {
-    printf("Cleaning up drones...\n");
-    
     if (!drone_fleet) {
         return; // Nothing to clean up
     }
     
     for(int i = 0; i < num_drones; i++) {
-        printf("Cleaning up drone %d...\n", i);
-        
         // Cancel thread
         pthread_cancel(drone_fleet[i].thread_id);
         
@@ -141,6 +130,4 @@ void cleanup_drones() {
     // Free memory
     free(drone_fleet);
     drone_fleet = NULL;
-    
-    printf("Drone cleanup complete\n");
 }

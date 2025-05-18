@@ -6,8 +6,13 @@
 // Global map instance (defined here, declared extern in map.h)
 Map map;
 
+/**
+ * Initialize the map with given dimensions
+ * Creates a grid of cells, each with its own survivor list
+ * @param height Map height (number of rows)
+ * @param width Map width (number of columns)
+ */
 void init_map(int height, int width) {
-    printf("DEBUG init_map - Creating map with height=%d, width=%d\n", height, width);
     map.height = height;
     map.width = width;
 
@@ -34,10 +39,12 @@ void init_map(int height, int width) {
             map.cells[i][j].survivors = create_list(sizeof(Survivor), 10);
         }
     }
-
-    printf("Map initialized: %dx%d\n", height, width);
 }
 
+/**
+ * Free all map resources
+ * Destroys all cell survivor lists and frees allocated memory
+ */
 void freemap() {
     for (int i = 0; i < map.height; i++) {
         for (int j = 0; j < map.width; j++) {
@@ -47,5 +54,4 @@ void freemap() {
         free(map.cells[i]);
     }
     free(map.cells);
-    printf("Map destroyed\n");
 }

@@ -15,6 +15,13 @@ Survivor *survivor_array = NULL;
 int num_survivors = 0;
 pthread_mutex_t survivors_mutex;
 
+/**
+ * Create a new survivor with the given attributes
+ * @param coord Location coordinates
+ * @param info Information string
+ * @param discovery_time Time of discovery
+ * @return Pointer to the new survivor or NULL if allocation failed
+ */
 Survivor *create_survivor(Coord *coord, char *info,
                           struct tm *discovery_time) {
     Survivor *s = malloc(sizeof(Survivor));
@@ -29,6 +36,10 @@ Survivor *create_survivor(Coord *coord, char *info,
     return s;
 }
 
+/**
+ * Initialize the survivor system
+ * Allocates survivor array and initializes mutex
+ */
 void initialize_survivors() {
     // Allocate memory for survivor array
     survivor_array = (Survivor*)malloc(sizeof(Survivor) * MAX_SURVIVORS);
@@ -43,10 +54,12 @@ void initialize_survivors() {
     
     // Initialize mutex
     pthread_mutex_init(&survivors_mutex, NULL);
-    
-    printf("Survivor array initialized with capacity for %d survivors\n", MAX_SURVIVORS);
 }
 
+/**
+ * Cleanup survivor resources
+ * Frees memory and destroys the mutex
+ */
 void cleanup_survivors() {
     pthread_mutex_destroy(&survivors_mutex);
     if (survivor_array) {
@@ -56,17 +69,18 @@ void cleanup_survivors() {
     num_survivors = 0;
 }
 
+/**
+ * Survivor generator thread function
+ * Continuously generates new survivors at random map locations
+ * @param args Unused thread parameters
+ * @return NULL
+ */
 void *survivor_generator(void *args) {
-    
-    printf("Survivor generator started\n");
-    
     // Wait a moment for the system to stabilize
     sleep(1);
     
     // Seed random number generator
     srand(time(NULL));
-    
-    printf("Beginning rapid survivor generation...\n");
     
     // Initial batch of survivors (10 at once)
     for (int i = 0; i < 10; i++) {
@@ -88,9 +102,6 @@ void *survivor_generator(void *args) {
             time(&t);
             localtime_r(&t, &survivor_array[num_survivors].discovery_time);
             
-            printf("Created initial survivor %d at (%d,%d)\n", 
-                   num_survivors, x, y);
-            
             // Move to next array slot
             num_survivors++;
         }
@@ -100,8 +111,6 @@ void *survivor_generator(void *args) {
         // Very small delay between initial survivors
         usleep(100000); // Just 0.1 seconds between spawns
     }
-    
-    printf("Initial batch created, continuing with rapid generation\n");
     
     // Constant rapid generation
     while (1) {
@@ -129,16 +138,10 @@ void *survivor_generator(void *args) {
             time(&t);
             localtime_r(&t, &survivor_array[num_survivors].discovery_time);
             
-            printf("Created rapid survivor %d at (%d,%d)\n", 
-                   num_survivors, x, y);
-            
             // Move to next array slot
             num_survivors++;
         } else {
-            printf("Survivor array full (%d survivors)\n", num_survivors);
-            
-            // If the array is full, we can reset some rescued survivors to make space
-            // Optional: Recycle some rescued survivors
+            // If the array is full, recycle some rescued survivors to make space
             int recycled = 0;
             for (int i = 0; i < num_survivors && recycled < 5; i++) {
                 if (survivor_array[i].status == 2) { // If rescued
@@ -156,7 +159,6 @@ void *survivor_generator(void *args) {
                     time(&t);
                     localtime_r(&t, &survivor_array[i].discovery_time);
                     
-                    printf("Recycled survivor %d at new position (%d,%d)\n", i, x, y);
                     recycled++;
                 }
             }
@@ -169,6 +171,10 @@ void *survivor_generator(void *args) {
     return NULL;
 }
 
+/**
+ * Clean up resources associated with a survivor
+ * @param s Pointer to the survivor to clean up
+ */
 void survivor_cleanup(Survivor *s) {
     // Make sure coordinates are within bounds to avoid segfault
     if (s->coord.x >= 0 && s->coord.x < map.height && 

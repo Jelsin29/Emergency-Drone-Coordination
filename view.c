@@ -20,11 +20,13 @@ const SDL_Color BLUE = {0, 0, 255, 255};
 const SDL_Color GREEN = {0, 255, 0, 255};
 const SDL_Color WHITE = {255, 255, 255, 255};
 
+/**
+ * Initialize SDL window and renderer based on map dimensions
+ * @return 0 on success, 1 on failure
+ */
 int init_sdl_window() {
     window_width = map.width * CELL_SIZE;
     window_height = map.height * CELL_SIZE;
-    
-    printf("Window dimensions: %dx%d\n", window_width, window_height);
 
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         fprintf(stderr, "SDL_Init Error: %s\n", SDL_GetError());
@@ -60,10 +62,15 @@ int init_sdl_window() {
     return 0;
 }
 
+/**
+ * Draw a colored cell at the specified map coordinates
+ * @param x Map x-coordinate
+ * @param y Map y-coordinate
+ * @param color Color to fill the cell with
+ */
 void draw_cell(int x, int y, SDL_Color color) {
     // Boundary check to prevent invalid memory access
     if (x < 0 || x >= map.height || y < 0 || y >= map.width) {
-        printf("WARNING: Attempted to draw cell at invalid position (%d,%d)\n", x, y);
         return;
     }
     
@@ -82,11 +89,13 @@ void draw_cell(int x, int y, SDL_Color color) {
     SDL_RenderFillRect(renderer, &rect);
 }
 
+/**
+ * Draw all drones with colors indicating their status
+ * Blue = IDLE, Green = ON_MISSION
+ * Also draws lines between drones and their targets when on mission
+ */
 void draw_drones() {
-    int drones_drawn = 0;
-    
     if (drone_fleet == NULL) {
-        printf("Warning: drone_fleet is NULL in draw_drones()\n");
         return;
     }
     
@@ -98,7 +107,6 @@ void draw_drones() {
         
         // Draw the drone
         draw_cell(drone_fleet[i].coord.x, drone_fleet[i].coord.y, color);
-        drones_drawn++;
         
         // Draw mission line if on mission
         if (drone_fleet[i].status == ON_MISSION) {
@@ -113,17 +121,13 @@ void draw_drones() {
         
         pthread_mutex_unlock(&drone_fleet[i].lock);
     }
-    
-    if (drones_drawn > 0) {
-        printf("Drew %d drones\n", drones_drawn);
-    } else {
-        printf("No drones drawn\n");
-    }
 }
 
+/**
+ * Draw all active survivors (status 0 or 1) on the map in red
+ * Status 0 = Waiting for help, Status 1 = Being helped
+ */
 void draw_survivors() {
-    int survivors_drawn = 0;
-    
     // Lock the mutex before accessing the survivor array
     pthread_mutex_lock(&survivors_mutex);
     
@@ -133,20 +137,16 @@ void draw_survivors() {
         // Don't draw rescued survivors (status 2)
         if (survivor_array[i].status == 0 || survivor_array[i].status == 1) {
             draw_cell(survivor_array[i].coord.x, survivor_array[i].coord.y, RED);
-            survivors_drawn++;
         }
     }
     
     // Unlock after reading the array
     pthread_mutex_unlock(&survivors_mutex);
-    
-    if (survivors_drawn > 0) {
-        printf("Drew %d active survivors\n", survivors_drawn);
-    } else {
-        printf("No active survivors to draw\n");
-    }
 }
 
+/**
+ * Draw the grid lines that represent the map
+ */
 void draw_grid() {
     SDL_SetRenderDrawColor(renderer, WHITE.r, WHITE.g, WHITE.b,
                            WHITE.a);
@@ -160,7 +160,9 @@ void draw_grid() {
     }
 }
 
-// Add this function to draw a test pattern if needed
+/**
+ * Draw a test pattern for debugging visualization
+ */
 void draw_test_pattern() {
     for (int i = 0; i < map.height; i++) {
         for (int j = 0; j < map.width; j++) {
@@ -173,6 +175,10 @@ void draw_test_pattern() {
     }
 }
 
+/**
+ * Draw the entire map including grid, survivors, and drones
+ * @return 0 on success, 1 on failure
+ */
 int draw_map() {
     if (!renderer) {
         fprintf(stderr, "Error: Renderer not initialized in draw_map()\n");
@@ -217,6 +223,9 @@ int draw_map() {
     return 0;
 }
 
+/**
+ * Draw diagnostic graphics for troubleshooting
+ */
 void draw_diagnostic() {
     // Draw a large red X across the entire window
     SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
@@ -242,10 +251,13 @@ void draw_diagnostic() {
         }
         
         draw_cell(x, y, RED);
-        printf("Drawing diagnostic survivor at position (%d,%d)\n", x, y);
     }
 }
 
+/**
+ * Check SDL events for user input
+ * @return 1 if quit requested, 0 otherwise
+ */
 int check_events() {
     while (SDL_PollEvent(&event)) {
         if (event.type == SDL_QUIT) return 1;
@@ -256,6 +268,9 @@ int check_events() {
     return 0;
 }
 
+/**
+ * Clean up SDL resources
+ */
 void quit_all() {
     if (renderer) SDL_DestroyRenderer(renderer);
     if (window) SDL_DestroyWindow(window);

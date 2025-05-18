@@ -7,15 +7,24 @@
 #include <string.h>
 #include <pthread.h>
 
-// Calculate Manhattan distance between two coordinates
+/**
+ * Calculate Manhattan distance between two coordinates
+ * @param a First coordinate
+ * @param b Second coordinate
+ * @return Manhattan distance (|x1-x2| + |y1-y2|)
+ */
 int calculate_distance(Coord a, Coord b) {
     return abs(a.x - b.x) + abs(a.y - b.y);
 }
 
-// Assign a mission to a drone to rescue a specific survivor
+/**
+ * Assign a mission to a drone to rescue a specific survivor
+ * @param drone Pointer to the drone to assign
+ * @param survivor_index Index of the survivor to rescue
+ */
 void assign_mission(Drone *drone, int survivor_index) {
     if (!drone || survivor_index < 0 || survivor_index >= num_survivors) {
-        printf("ERROR: Invalid drone or survivor index in assign_mission\n");
+        fprintf(stderr, "Invalid drone or survivor index in assign_mission\n");
         return;
     }
     
@@ -39,11 +48,6 @@ void assign_mission(Drone *drone, int survivor_index) {
         time_t t;
         time(&t);
         localtime_r(&t, &drone->last_update);
-        
-        printf("Assigned drone %d to help survivor %d at (%d,%d)\n", 
-               drone->id, survivor_index,
-               survivor_array[survivor_index].coord.x,
-               survivor_array[survivor_index].coord.y);
     }
     
     // Unlock mutexes
@@ -51,10 +55,14 @@ void assign_mission(Drone *drone, int survivor_index) {
     pthread_mutex_unlock(&drone->lock);
 }
 
-// Find the closest idle drone to a specific survivor
+/**
+ * Find the closest idle drone to a specific survivor
+ * @param survivor_index Index of the survivor
+ * @return ID of the closest idle drone, or -1 if none available
+ */
 int find_closest_idle_drone(int survivor_index) {
     if (survivor_index < 0 || survivor_index >= num_survivors) {
-        printf("ERROR: Invalid survivor index in find_closest_idle_drone\n");
+        fprintf(stderr, "Invalid survivor index in find_closest_idle_drone\n");
         return -1;
     }
     
@@ -83,11 +91,14 @@ int find_closest_idle_drone(int survivor_index) {
     return closest_drone_id;
 }
 
-// Main AI controller function - runs in a separate thread
+/**
+ * Main AI controller function - runs in a separate thread
+ * Manages mission assignment and completion
+ * @param args Unused parameter
+ * @return NULL
+ */
 void *ai_controller(void *args) {
     (void)args; // Unused parameter
-    
-    printf("AI Controller started\n");
     
     // Give the system time to initialize
     sleep(3);
@@ -100,6 +111,7 @@ void *ai_controller(void *args) {
         
         int missions_assigned = 0;
         
+        // First phase: Assign missions to idle drones
         for (int i = 0; i < current_num_survivors; i++) {
             pthread_mutex_lock(&survivors_mutex);
             
@@ -120,12 +132,7 @@ void *ai_controller(void *args) {
             }
         }
         
-        // Print stats about assignments
-        if (missions_assigned > 0) {
-            printf("AI Controller: Assigned %d new missions\n", missions_assigned);
-        }
-        
-        // Check for mission completions
+        // Second phase: Check for mission completions
         int missions_completed = 0;
         for (int i = 0; i < num_drones; i++) {
             pthread_mutex_lock(&drone_fleet[i].lock);
@@ -150,7 +157,6 @@ void *ai_controller(void *args) {
                             time(&t);
                             localtime_r(&t, &survivor_array[j].helped_time);
                             
-                            printf("Survivor %d rescued by drone %d!\n", j, i);
                             missions_completed++;
                             
                             // Reset drone to idle
@@ -164,10 +170,6 @@ void *ai_controller(void *args) {
             }
             
             pthread_mutex_unlock(&drone_fleet[i].lock);
-        }
-        
-        if (missions_completed > 0) {
-            printf("AI Controller: Completed %d missions\n", missions_completed);
         }
         
         // Sleep to avoid excessive CPU usage
