@@ -10,6 +10,11 @@
 #include "headers/globals.h"
 #include "headers/map.h"
 
+// Global survivor array
+Survivor *survivor_array = NULL;
+int num_survivors = 0;
+pthread_mutex_t survivors_mutex;
+
 Survivor *create_survivor(Coord *coord, char *info,
                           struct tm *discovery_time) {
     Survivor *s = malloc(sizeof(Survivor));
@@ -24,6 +29,33 @@ Survivor *create_survivor(Coord *coord, char *info,
     return s;
 }
 
+void initialize_survivors() {
+    // Allocate memory for survivor array
+    survivor_array = (Survivor*)malloc(sizeof(Survivor) * MAX_SURVIVORS);
+    if (!survivor_array) {
+        fprintf(stderr, "Failed to allocate memory for survivor array\n");
+        exit(EXIT_FAILURE);
+    }
+    
+    // Initialize values
+    memset(survivor_array, 0, sizeof(Survivor) * MAX_SURVIVORS);
+    num_survivors = 0;
+    
+    // Initialize mutex
+    pthread_mutex_init(&survivors_mutex, NULL);
+    
+    printf("Survivor array initialized with capacity for %d survivors\n", MAX_SURVIVORS);
+}
+
+void cleanup_survivors() {
+    pthread_mutex_destroy(&survivors_mutex);
+    if (survivor_array) {
+        free(survivor_array);
+        survivor_array = NULL;
+    }
+    num_survivors = 0;
+}
+
 void *survivor_generator(void *args) {
     (void)args;  // Unused parameter
     
@@ -31,9 +63,6 @@ void *survivor_generator(void *args) {
     
     // Wait a moment for the system to stabilize
     sleep(2);
-    
-    // Seed random number generator
-    srand(time(NULL) + 1000);
     
     // Create survivors at several fixed positions first
     int fixed_positions[5][2] = {
@@ -46,123 +75,76 @@ void *survivor_generator(void *args) {
     
     printf("Creating 5 fixed test survivors\n");
     
-    for (int i = 0; i < 5; i++) {
+    // Lock the mutex before modifying the survivor array
+    pthread_mutex_lock(&survivors_mutex);
+    
+    // Create the fixed survivors
+    for (int i = 0; i < 5 && num_survivors < MAX_SURVIVORS; i++) {
         int x = fixed_positions[i][0];
         int y = fixed_positions[i][1];
         
-        // Create survivor
-        Survivor *s = malloc(sizeof(Survivor));
-        if (!s) {
-            fprintf(stderr, "Failed to allocate memory for survivor\n");
-            continue;
-        }
-        
-        // Initialize fields
-        memset(s, 0, sizeof(Survivor));
-        s->coord.x = x;
-        s->coord.y = y;
-        snprintf(s->info, sizeof(s->info) - 1, "TEST-%d", i);
-        s->status = 0;  // Waiting for help
+        // Initialize new survivor
+        survivor_array[num_survivors].coord.x = x;
+        survivor_array[num_survivors].coord.y = y;
+        sprintf(survivor_array[num_survivors].info, "SURV-%d", num_survivors);
+        survivor_array[num_survivors].status = 0; // Waiting for help
         
         // Set time
         time_t t;
         time(&t);
-        localtime_r(&t, &s->discovery_time);
+        localtime_r(&t, &survivor_array[num_survivors].discovery_time);
         
-        printf("Creating fixed survivor at (%d,%d)\n", x, y);
+        printf("Created fixed survivor at (%d,%d)\n", x, y);
         
-        // Add to global list
-        pthread_mutex_lock(&survivors->lock);
-        survivors->add(survivors, s);
-        printf("Added survivor to global list, count: %d\n", 
-               survivors->number_of_elements);
-        pthread_mutex_unlock(&survivors->lock);
-        
-        // Verify coordinates are within map bounds
-        if (x < 0 || x >= map.height || y < 0 || y >= map.width) {
-            printf("ERROR: Survivor coordinates (%d,%d) are outside map bounds (%d,%d)!\n", 
-                  x, y, map.height, map.width);
-            continue;
-        }
-        
-        // Add to map cell WITH DEBUGGING ADDED
-        printf("CRITICAL DEBUG: About to add survivor to map cell (%d,%d)\n", x, y);
-        printf("CRITICAL DEBUG: Map height=%d, width=%d\n", map.height, map.width);
-        printf("CRITICAL DEBUG: Map cell survivors list at (%d,%d) is %p\n", 
-               x, y, (void*)map.cells[x][y].survivors);
-        
-        if (map.cells[x][y].survivors == NULL) {
-            printf("ERROR: Survivors list at map cell (%d,%d) is NULL!\n", x, y);
-        } else {
-            pthread_mutex_lock(&map.cells[x][y].survivors->lock);
-            Node *node = map.cells[x][y].survivors->add(map.cells[x][y].survivors, s);
-            int cell_count = map.cells[x][y].survivors->number_of_elements;
-            pthread_mutex_unlock(&map.cells[x][y].survivors->lock);
-            
-            if (node == NULL) {
-                printf("ERROR: Failed to add survivor to map cell (%d,%d)!\n", x, y);
-            } else {
-                printf("SUCCESS: Added survivor to map cell (%d,%d), count now: %d\n", 
-                      x, y, cell_count);
-            }
-        }
-        
-        // Short delay between survivors
-        sleep(1);
+        // Move to next array slot
+        num_survivors++;
     }
+    
+    // Unlock after modifying the array
+    pthread_mutex_unlock(&survivors_mutex);
     
     printf("Fixed survivors created, entering random generation mode\n");
     
-    // Then generate random survivors periodically
+    // Seed random number generator
+    srand(time(NULL));
+    
+    // Now randomly generate survivors periodically
     while (1) {
-        // Random coordinates within map bounds
-        int x = rand() % map.height;
-        int y = rand() % map.width;
-        
-        // Create survivor
-        Survivor *s = malloc(sizeof(Survivor));
-        if (!s) {
-            fprintf(stderr, "Failed to allocate memory for survivor\n");
-            sleep(3);
-            continue;
-        }
-        
-        // Initialize fields
-        memset(s, 0, sizeof(Survivor));
-        s->coord.x = x;
-        s->coord.y = y;
-        snprintf(s->info, sizeof(s->info) - 1, "SURV-%04d", rand() % 10000);
-        s->status = 0;  // Waiting for help
-        
-        // Set time
-        time_t t;
-        time(&t);
-        localtime_r(&t, &s->discovery_time);
-        
-        printf("Creating random survivor at (%d,%d)\n", x, y);
-        
-        // Add to global list
-        pthread_mutex_lock(&survivors->lock);
-        survivors->add(survivors, s);
-        printf("Total survivors: %d\n", survivors->number_of_elements);
-        pthread_mutex_unlock(&survivors->lock);
-        
-        // Add to map cell
-        pthread_mutex_lock(&map.cells[x][y].survivors->lock);
-        Node *node = map.cells[x][y].survivors->add(map.cells[x][y].survivors, s);
-        int cell_count = map.cells[x][y].survivors->number_of_elements;
-        pthread_mutex_unlock(&map.cells[x][y].survivors->lock);
-        
-        if (node == NULL) {
-            printf("ERROR: Failed to add random survivor to map cell (%d,%d)!\n", x, y);
-        } else {
-            printf("SUCCESS: Added random survivor to map cell (%d,%d), count now: %d\n", 
-                  x, y, cell_count);
-        }
-        
-        // Longer delay between random survivors
-        int delay = rand() % 5 + 5;  // 5-10 second delay
+        // Wait between 5-10 seconds before generating a new survivor
+        int delay = (rand() % 6) + 5;
         sleep(delay);
+        
+        // Lock the mutex before checking/modifying the array
+        pthread_mutex_lock(&survivors_mutex);
+        
+        // Only generate a new survivor if there's space in the array
+        if (num_survivors < MAX_SURVIVORS) {
+            // Generate random coordinates
+            int x = rand() % map.height;
+            int y = rand() % map.width;
+            
+            // Initialize new survivor
+            survivor_array[num_survivors].coord.x = x;
+            survivor_array[num_survivors].coord.y = y;
+            sprintf(survivor_array[num_survivors].info, "SURV-%d", num_survivors);
+            survivor_array[num_survivors].status = 0; // Waiting for help
+            
+            // Set time
+            time_t t;
+            time(&t);
+            localtime_r(&t, &survivor_array[num_survivors].discovery_time);
+            
+            printf("Created random survivor %d at (%d,%d)\n", 
+                   num_survivors, x, y);
+            
+            // Move to next array slot
+            num_survivors++;
+        } else {
+            printf("Survivor array full (%d survivors)\n", num_survivors);
+        }
+        
+        // Unlock after modifying the array
+        pthread_mutex_unlock(&survivors_mutex);
     }
     
     return NULL;

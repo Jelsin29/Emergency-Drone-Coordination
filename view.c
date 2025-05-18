@@ -61,13 +61,15 @@ int init_sdl_window() {
 }
 
 void draw_cell(int x, int y, SDL_Color color) {
-    // PRINT exact pixel values for debugging
-    printf("Drawing cell at (%d,%d) = pixel (%d,%d) with color (%d,%d,%d)\n",
-           x, y, y * CELL_SIZE, x * CELL_SIZE, color.r, color.g, color.b);
+    // Boundary check to prevent invalid memory access
+    if (x < 0 || x >= map.height || y < 0 || y >= map.width) {
+        printf("WARNING: Attempted to draw cell at invalid position (%d,%d)\n", x, y);
+        return;
+    }
     
-    // Make cells MUCH larger and more visible
+    // Create a rectangle for the cell
     SDL_Rect rect = {
-        y * CELL_SIZE,     // Note: x and y are transposed
+        y * CELL_SIZE,     // Note: x and y are transposed for SDL
         x * CELL_SIZE, 
         CELL_SIZE - 1,     // Make slightly smaller than cell
         CELL_SIZE - 1      // to ensure grid lines remain visible
@@ -78,6 +80,9 @@ void draw_cell(int x, int y, SDL_Color color) {
     
     // Draw the cell
     SDL_RenderFillRect(renderer, &rect);
+    
+    printf("Drew cell at (%d,%d) = pixel (%d,%d) with color (%d,%d,%d)\n",
+           x, y, y * CELL_SIZE, x * CELL_SIZE, color.r, color.g, color.b);
 }
 
 void draw_drones() {
@@ -122,37 +127,27 @@ void draw_drones() {
 void draw_survivors() {
     int survivors_drawn = 0;
     
-    // Draw survivors from the map cells
-    for (int i = 0; i < map.height; i++) {
-        for (int j = 0; j < map.width; j++) {
-            pthread_mutex_lock(&map.cells[i][j].survivors->lock);
-            
-            // Check if there are any survivors in this cell
-            if (map.cells[i][j].survivors->number_of_elements > 0) {
-                // Draw a red cell for survivors
-                draw_cell(i, j, RED);
-                survivors_drawn++;
-                printf("Drawing survivor at map cell (%d,%d), count in cell: %d\n", 
-                       i, j, map.cells[i][j].survivors->number_of_elements);
-            }
-            
-            pthread_mutex_unlock(&map.cells[i][j].survivors->lock);
+    // Lock the mutex before accessing the survivor array
+    pthread_mutex_lock(&survivors_mutex);
+    
+    // Draw each survivor in the array
+    for (int i = 0; i < num_survivors; i++) {
+        // Only draw survivors that are waiting for help (status 0)
+        if (survivor_array[i].status == 0) {
+            draw_cell(survivor_array[i].coord.x, survivor_array[i].coord.y, RED);
+            survivors_drawn++;
+            printf("Drawing survivor at (%d,%d)\n", 
+                   survivor_array[i].coord.x, survivor_array[i].coord.y);
         }
     }
     
-    // Debug: print how many we drew
+    // Unlock after reading the array
+    pthread_mutex_unlock(&survivors_mutex);
+    
     if (survivors_drawn > 0) {
-        printf("Drew %d survivors from map cells\n", survivors_drawn);
+        printf("Drew %d survivors from survivor array\n", survivors_drawn);
     } else {
-        printf("No survivors found in map cells to draw\n");
-        
-        // Fallback: Draw the fixed test survivors 
-        printf("Drawing fallback test survivors\n");
-        draw_cell(5, 5, RED);
-        draw_cell(5, 25, RED);
-        draw_cell(20, 15, RED);
-        draw_cell(35, 5, RED);
-        draw_cell(35, 25, RED);
+        printf("No survivors found to draw\n");
     }
 }
 
@@ -213,29 +208,65 @@ int draw_map() {
 }
 
 void draw_diagnostic() {
-    // Draw a large red X across the entire window (WORKING)
-    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+    // Draw the red X and green border as before
+    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);  // Red
     SDL_RenderDrawLine(renderer, 0, 0, window_width, window_height);
     SDL_RenderDrawLine(renderer, 0, window_height, window_width, 0);
     
-    // Draw a bright green border around the entire window (WORKING)
-    SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
-    SDL_RenderDrawLine(renderer, 0, 0, window_width, 0);
-    SDL_RenderDrawLine(renderer, window_width, 0, window_width, window_height);
-    SDL_RenderDrawLine(renderer, window_width, window_height, 0, window_height);
-    SDL_RenderDrawLine(renderer, 0, window_height, 0, 0);
+    SDL_Rect border = {0, 0, window_width-1, window_height-1};
+    SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);  // Green
+    SDL_RenderDrawRect(renderer, &border);
     
-    // Try the most basic rectangle possible
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); // White
-    SDL_Rect rect1 = { 100, 100, 100, 100 }; // Simple square at 100,100
-    SDL_RenderFillRect(renderer, &rect1);
+    // Draw HUGE squares for each drone in fixed screen positions
+    int colors[5][3] = {
+        {255, 255, 255},  // White
+        {255, 255, 0},    // Yellow
+        {0, 255, 255},    // Cyan
+        {255, 0, 255},    // Magenta
+        {128, 128, 255}   // Light blue
+    };
     
-    // Try another rectangle with different color
-    SDL_SetRenderDrawColor(renderer, 0, 0, 255, 255); // Blue
-    SDL_Rect rect2 = { 300, 300, 100, 100 }; // Simple square at 300,300
-    SDL_RenderFillRect(renderer, &rect2);
+    // Draw drones in a row at the top
+    if (drone_fleet != NULL) {
+        for (int i = 0; i < num_drones && i < 10; i++) {
+            // Pick a color based on drone index
+            int colorIdx = i % 5;
+            SDL_SetRenderDrawColor(renderer, 
+                                 colors[colorIdx][0], 
+                                 colors[colorIdx][1], 
+                                 colors[colorIdx][2], 
+                                 255);
+            
+            // Draw a square in a fixed position across the top of the screen
+            SDL_Rect rect = {
+                50 + i * 60,  // Fixed X position 
+                50,           // Fixed Y position at top
+                50,           // Large size
+                50            // Large size
+            };
+            SDL_RenderFillRect(renderer, &rect);
+            
+            printf("Drawing fixed drone %d at screen position (%d,%d)\n", 
+                  i, 50 + i * 60, 50);
+        }
+    }
     
-    printf("Drawing basic test rectangles at (100,100) and (300,300)\n");
+    // Draw survivors in a row at the bottom
+    for (int i = 0; i < 5; i++) {
+        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);  // Red
+        
+        // Draw a square in a fixed position across the bottom of the screen
+        SDL_Rect rect = {
+            100 + i * 100,      // Fixed X position
+            window_height - 100, // Fixed Y position at bottom
+            70,                  // Large size
+            70                   // Large size
+        };
+        SDL_RenderFillRect(renderer, &rect);
+        
+        printf("Drawing fixed survivor %d at screen position (%d,%d)\n", 
+              i, 100 + i * 100, window_height - 100);
+    }
 }
 
 int check_events() {

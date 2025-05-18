@@ -100,17 +100,17 @@ int main() {
     // Initialize map (40x30 grid)
     printf("Initializing map...\n");
     init_map(40, 30);
-    printf("Map initialized: %dx%d\n", map.width, map.height);
+    printf("Map initialized: height=%d, width=%d\n", map.height, map.width);
+
+    // Initialize survivor array
+    initialize_survivors();
 
     // Initialize SDL window
     printf("Initializing SDL window...\n");
     if (init_sdl_window() != 0) {
         fprintf(stderr, "Failed to initialize SDL window\n");
-        // Cleanup what we've created so far
-        if (survivors) survivors->destroy(survivors);
-        if (helpedsurvivors) helpedsurvivors->destroy(helpedsurvivors);
-        if (drones) drones->destroy(drones);
-        freemap();
+        cleanup_resources();
+        cleanup_survivors();
         return 1;
     }
     printf("SDL window initialized successfully\n");
@@ -129,21 +129,25 @@ int main() {
     initialize_drones();
     printf("Drones initialized successfully\n");
     
-    // Start a simplified main loop
-    printf("Starting simplified main loop...\n");
+    // Start survivor generator thread
+    printf("Starting survivor generator thread...\n");
+    int result = pthread_create(&survivor_thread, NULL, survivor_generator, NULL);
+    if (result != 0) {
+        fprintf(stderr, "Error creating survivor thread: %d\n", result);
+        cleanup_resources();
+        cleanup_survivors();
+        return 1;
+    }
+    printf("Survivor generator thread started\n");
+    
+    // Wait for survivor generator to create initial survivors
+    printf("Waiting for survivors to be generated...\n");
+    sleep(3);
+    
+    // Start main loop
+    printf("Starting main loop...\n");
     int frame_count = 0;
     running = 1;
-    
-    // Create a fixed test survivor for display testing
-    printf("Creating fixed test survivor at (15,15)\n");
-    SDL_RenderClear(renderer);
-    draw_grid();
-    
-    // Draw a fixed red square at (15,15) - use the color constant RED now that it's exposed
-    draw_cell(15, 15, RED);
-    SDL_RenderPresent(renderer);
-    printf("Test survivor drawn, pausing for 2 seconds...\n");
-    sleep(2);
     
     while (running) {
         // Process SDL events
@@ -157,25 +161,33 @@ int main() {
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
         
-        // Draw elements - grid and drones first
+        // Draw elements - grid, drones, and survivors
         draw_grid();
+        draw_survivors();
+        
         if (drone_fleet != NULL) {
             draw_drones();
         }
         
-        // Draw a fixed test survivor at (15,15)
-        draw_cell(15, 15, RED);
-        
-        // Print a heartbeat message every 50 frames
+        // Print statistics every 50 frames
         if (frame_count % 50 == 0) {
-            printf("Frame %d: Drawing grid, drones, and test survivor\n", frame_count);
+            pthread_mutex_lock(&survivors_mutex);
+            int current_survivors = num_survivors;
+            pthread_mutex_unlock(&survivors_mutex);
+            
+            printf("Frame %d: Survivors: %d, Drones: %d\n", 
+                   frame_count, current_survivors, num_drones);
         }
         
         // Update title
+        pthread_mutex_lock(&survivors_mutex);
+        int current_survivors = num_survivors;
+        pthread_mutex_unlock(&survivors_mutex);
+        
         char title[100];
         snprintf(title, sizeof(title), 
-                "Drone Simulator | Test Survivor at (15,15) | Drones: %d", 
-                num_drones);
+                "Drone Simulator | Survivors: %d | Drones: %d", 
+                current_survivors, num_drones);
         SDL_SetWindowTitle(window, title);
         
         // Present the frame
@@ -189,8 +201,14 @@ int main() {
     
     printf("Exiting main loop...\n");
     
+    // Cancel survivor thread
+    printf("Canceling survivor thread...\n");
+    pthread_cancel(survivor_thread);
+    pthread_join(survivor_thread, NULL);
+    
     // Cleanup
     cleanup_resources();
+    cleanup_survivors();
     
     return 0;
 }
