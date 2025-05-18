@@ -9,7 +9,7 @@
 
 // Global drone fleet
 Drone *drone_fleet = NULL;
-int num_drones = 10; // Default fleet size
+int num_drones = 20; // Default fleet size
 
 /**
  * Initialize the drone fleet

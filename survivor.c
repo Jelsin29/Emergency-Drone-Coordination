@@ -144,7 +144,7 @@ void *survivor_generator(void *args) {
             // If the array is full, recycle some rescued survivors to make space
             int recycled = 0;
             for (int i = 0; i < num_survivors && recycled < 5; i++) {
-                if (survivor_array[i].status == 2) { // If rescued
+                if (survivor_array[i].status >= 2) { // If rescued
                     // Generate new coordinates
                     int x = rand() % map.height;
                     int y = rand() % map.width;

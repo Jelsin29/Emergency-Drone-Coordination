@@ -195,28 +195,6 @@ int draw_map() {
     draw_drones();
     draw_grid();
     
-    // Update the window title with current statistics
-    pthread_mutex_lock(&survivors_mutex);
-    int survivor_count = 0;
-    int helped_count = 0;
-    int rescued_count = 0;
-    
-    for (int i = 0; i < num_survivors; i++) {
-        if (survivor_array[i].status == 0) {
-            survivor_count++;
-        } else if (survivor_array[i].status == 1) {
-            helped_count++;
-        } else if (survivor_array[i].status == 2) {
-            rescued_count++;
-        }
-    }
-    pthread_mutex_unlock(&survivors_mutex);
-    
-    char title[100];
-    snprintf(title, sizeof(title), 
-             "Drone Simulator | Waiting: %d | Being Helped: %d | Rescued: %d | Drones: %d",
-             survivor_count, helped_count, rescued_count, num_drones);
-    SDL_SetWindowTitle(window, title);
 
     // Present the rendered frame
     SDL_RenderPresent(renderer);
