@@ -16,17 +16,17 @@ typedef struct survivor {
     char info[25];
 } Survivor;
 
-// Global survivor array (new implementation)
+// Global survivor array and synchronization
 extern Survivor *survivor_array;
 extern int num_survivors;
 extern pthread_mutex_t survivors_mutex;
 
-// Global survivor lists (old implementation, kept for compatibility)
+// Global survivor lists (for backward compatibility)
 extern List *survivors;          // Survivors awaiting help
 extern List *helpedsurvivors;    // Helped survivors
 
 // Functions
-void initialize_survivors(); 
+void initialize_survivors();
 void cleanup_survivors();
 Survivor* create_survivor(Coord *coord, char *info, struct tm *discovery_time);
 void *survivor_generator(void *args);

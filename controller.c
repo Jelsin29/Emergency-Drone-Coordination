@@ -140,6 +140,17 @@ int main() {
     }
     printf("Survivor generator thread started\n");
     
+    // Start AI controller thread
+    printf("Starting AI controller thread...\n");
+    int ai_result = pthread_create(&ai_thread, NULL, ai_controller, NULL);
+    if (ai_result != 0) {
+        fprintf(stderr, "Error creating AI controller thread: %d\n", ai_result);
+        cleanup_resources();
+        cleanup_survivors();
+        return 1;
+    }
+    printf("AI controller thread started\n");
+    
     // Wait for survivor generator to create initial survivors
     printf("Waiting for survivors to be generated...\n");
     sleep(3);
@@ -172,22 +183,52 @@ int main() {
         // Print statistics every 50 frames
         if (frame_count % 50 == 0) {
             pthread_mutex_lock(&survivors_mutex);
-            int current_survivors = num_survivors;
+            
+            // Count survivors by status
+            int waiting_count = 0;
+            int helped_count = 0;
+            int rescued_count = 0;
+            
+            for (int i = 0; i < num_survivors; i++) {
+                if (survivor_array[i].status == 0) {
+                    waiting_count++;
+                } else if (survivor_array[i].status == 1) {
+                    helped_count++;
+                } else if (survivor_array[i].status == 2) {
+                    rescued_count++;
+                }
+            }
+            
             pthread_mutex_unlock(&survivors_mutex);
             
-            printf("Frame %d: Survivors: %d, Drones: %d\n", 
-                   frame_count, current_survivors, num_drones);
+            printf("Frame %d: Waiting: %d, Being Helped: %d, Rescued: %d, Drones: %d\n", 
+                   frame_count, waiting_count, helped_count, rescued_count, num_drones);
         }
         
         // Update title
         pthread_mutex_lock(&survivors_mutex);
-        int current_survivors = num_survivors;
+        
+        // Count survivors by status
+        int waiting_count = 0;
+        int helped_count = 0;
+        int rescued_count = 0;
+        
+        for (int i = 0; i < num_survivors; i++) {
+            if (survivor_array[i].status == 0) {
+                waiting_count++;
+            } else if (survivor_array[i].status == 1) {
+                helped_count++;
+            } else if (survivor_array[i].status == 2) {
+                rescued_count++;
+            }
+        }
+        
         pthread_mutex_unlock(&survivors_mutex);
         
         char title[100];
         snprintf(title, sizeof(title), 
-                "Drone Simulator | Survivors: %d | Drones: %d", 
-                current_survivors, num_drones);
+                "Drone Simulator | Waiting: %d | Being Helped: %d | Rescued: %d | Drones: %d", 
+                waiting_count, helped_count, rescued_count, num_drones);
         SDL_SetWindowTitle(window, title);
         
         // Present the frame
@@ -201,7 +242,11 @@ int main() {
     
     printf("Exiting main loop...\n");
     
-    // Cancel survivor thread
+    // Cancel threads
+    printf("Canceling AI controller thread...\n");
+    pthread_cancel(ai_thread);
+    pthread_join(ai_thread, NULL);
+    
     printf("Canceling survivor thread...\n");
     pthread_cancel(survivor_thread);
     pthread_join(survivor_thread, NULL);

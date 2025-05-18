@@ -5,124 +5,173 @@
 #include <unistd.h>
 #include <time.h>
 #include <string.h>
-
-void assign_mission(Drone *drone, Coord target) {
-    printf("Assigning mission to drone %d: target (%d,%d)\n", 
-           drone->id, target.x, target.y);
-           
-    pthread_mutex_lock(&drone->lock);
-    drone->target = target;
-    drone->status = ON_MISSION;
-    time_t t;
-    time(&t);
-    localtime_r(&t, &drone->last_update);
-    pthread_mutex_unlock(&drone->lock);
-    
-    printf("Mission assigned to drone %d\n", drone->id);
-}
+#include <pthread.h>
 
 // Calculate Manhattan distance between two coordinates
 int calculate_distance(Coord a, Coord b) {
     return abs(a.x - b.x) + abs(a.y - b.y);
 }
 
-Drone *find_closest_idle_drone(Coord target) {
-    Drone *closest = NULL;
+// Assign a mission to a drone to rescue a specific survivor
+void assign_mission(Drone *drone, int survivor_index) {
+    if (!drone || survivor_index < 0 || survivor_index >= num_survivors) {
+        printf("ERROR: Invalid drone or survivor index in assign_mission\n");
+        return;
+    }
+    
+    // Lock both drone and survivor mutex to prevent race conditions
+    pthread_mutex_lock(&drone->lock);
+    pthread_mutex_lock(&survivors_mutex);
+    
+    // Only proceed if the survivor still needs help and drone is idle
+    if (survivor_array[survivor_index].status == 0 && drone->status == IDLE) {
+        // Set drone target to survivor position
+        drone->target.x = survivor_array[survivor_index].coord.x;
+        drone->target.y = survivor_array[survivor_index].coord.y;
+        
+        // Update drone status
+        drone->status = ON_MISSION;
+        
+        // Update survivor status to "being helped"
+        survivor_array[survivor_index].status = 1;
+        
+        // Set timestamp
+        time_t t;
+        time(&t);
+        localtime_r(&t, &drone->last_update);
+        
+        printf("Assigned drone %d to help survivor %d at (%d,%d)\n", 
+               drone->id, survivor_index,
+               survivor_array[survivor_index].coord.x,
+               survivor_array[survivor_index].coord.y);
+    }
+    
+    // Unlock mutexes
+    pthread_mutex_unlock(&survivors_mutex);
+    pthread_mutex_unlock(&drone->lock);
+}
+
+// Find the closest idle drone to a specific survivor
+int find_closest_idle_drone(int survivor_index) {
+    if (survivor_index < 0 || survivor_index >= num_survivors) {
+        printf("ERROR: Invalid survivor index in find_closest_idle_drone\n");
+        return -1;
+    }
+    
+    int closest_drone_id = -1;
     int min_distance = INT_MAX;
     
-    // Iterate through drone_fleet directly instead of using the list
+    pthread_mutex_lock(&survivors_mutex);
+    Coord survivor_pos = survivor_array[survivor_index].coord;
+    pthread_mutex_unlock(&survivors_mutex);
+    
+    // Iterate through all drones to find the closest idle one
     for (int i = 0; i < num_drones; i++) {
         pthread_mutex_lock(&drone_fleet[i].lock);
         
         if (drone_fleet[i].status == IDLE) {
-            int dist = calculate_distance(drone_fleet[i].coord, target);
+            int dist = calculate_distance(drone_fleet[i].coord, survivor_pos);
             if (dist < min_distance) {
                 min_distance = dist;
-                closest = &drone_fleet[i];
+                closest_drone_id = i;
             }
         }
         
         pthread_mutex_unlock(&drone_fleet[i].lock);
     }
     
-    return closest;
+    return closest_drone_id;
 }
 
-void *ai_controller(void *arg) {
-    (void)arg; // Unused parameter
+// Main AI controller function - runs in a separate thread
+void *ai_controller(void *args) {
+    (void)args; // Unused parameter
     
     printf("AI Controller started\n");
     
-    // Give the system a moment to finish initialization
-    sleep(2);
+    // Give the system time to initialize
+    sleep(3);
     
     while (1) {
-        // Check if there are any survivors waiting
-        pthread_mutex_lock(&survivors->lock);
-        int survivor_count = survivors->number_of_elements;
+        // Scan through all survivors to find those waiting for help
+        pthread_mutex_lock(&survivors_mutex);
+        int current_num_survivors = num_survivors;
+        pthread_mutex_unlock(&survivors_mutex);
         
-        if (survivor_count > 0) {
-            // Get the first survivor from the list
-            Survivor *s = NULL;
-            if (survivors->head != NULL) {
-                s = malloc(sizeof(Survivor));  // Allocate new memory for popped survivor
-                if (s == NULL) {
-                    pthread_mutex_unlock(&survivors->lock);
-                    fprintf(stderr, "Failed to allocate memory for survivor\n");
-                    sleep(1);
-                    continue;
-                }
-                
-                // Pop the survivor from the list into our new memory
-                if (survivors->pop(survivors, s) == NULL) {
-                    pthread_mutex_unlock(&survivors->lock);
-                    free(s);
-                    fprintf(stderr, "Failed to pop survivor from list\n");
-                    sleep(1);
-                    continue;
-                }
-                
-                pthread_mutex_unlock(&survivors->lock);
-                
-                printf("Processing survivor %s at (%d,%d)\n", 
-                       s->info, s->coord.x, s->coord.y);
-                
-                // Find closest idle drone
-                Drone *closest = find_closest_idle_drone(s->coord);
-                
-                if (closest != NULL) {
-                    // Assign mission
-                    assign_mission(closest, s->coord);
-                    
-                    // Mark as being helped
-                    s->status = 1;
-                    time_t t;
-                    time(&t);
-                    localtime_r(&t, &s->helped_time);
-                    
-                    // Add to helped survivors list
-                    pthread_mutex_lock(&helpedsurvivors->lock);
-                    helpedsurvivors->add(helpedsurvivors, s);
-                    pthread_mutex_unlock(&helpedsurvivors->lock);
-                    
-                    printf("Survivor %s being helped by Drone %d\n",
-                           s->info, closest->id);
-                } else {
-                    // No drones available, put the survivor back in the list
-                    printf("No idle drones available for survivor %s\n", s->info);
-                    pthread_mutex_lock(&survivors->lock);
-                    survivors->add(survivors, s);
-                    pthread_mutex_unlock(&survivors->lock);
-                }
-            } else {
-                pthread_mutex_unlock(&survivors->lock);
+        int missions_assigned = 0;
+        
+        for (int i = 0; i < current_num_survivors; i++) {
+            pthread_mutex_lock(&survivors_mutex);
+            
+            // Skip survivors that are already being helped or rescued
+            if (survivor_array[i].status != 0) {
+                pthread_mutex_unlock(&survivors_mutex);
+                continue;
             }
-        } else {
-            pthread_mutex_unlock(&survivors->lock);
+            pthread_mutex_unlock(&survivors_mutex);
+            
+            // Find the closest idle drone
+            int drone_id = find_closest_idle_drone(i);
+            
+            // If an idle drone was found, assign it to help this survivor
+            if (drone_id >= 0) {
+                assign_mission(&drone_fleet[drone_id], i);
+                missions_assigned++;
+            }
+        }
+        
+        // Print stats about assignments
+        if (missions_assigned > 0) {
+            printf("AI Controller: Assigned %d new missions\n", missions_assigned);
+        }
+        
+        // Check for mission completions
+        int missions_completed = 0;
+        for (int i = 0; i < num_drones; i++) {
+            pthread_mutex_lock(&drone_fleet[i].lock);
+            
+            // If drone is on mission, check if it reached its target
+            if (drone_fleet[i].status == ON_MISSION) {
+                if (drone_fleet[i].coord.x == drone_fleet[i].target.x && 
+                    drone_fleet[i].coord.y == drone_fleet[i].target.y) {
+                    
+                    // Find which survivor this drone was helping
+                    pthread_mutex_lock(&survivors_mutex);
+                    for (int j = 0; j < num_survivors; j++) {
+                        if (survivor_array[j].status == 1 && 
+                            survivor_array[j].coord.x == drone_fleet[i].target.x &&
+                            survivor_array[j].coord.y == drone_fleet[i].target.y) {
+                            
+                            // Mark survivor as rescued
+                            survivor_array[j].status = 2; // 2 = rescued (won't be drawn)
+                            
+                            // Set rescue timestamp
+                            time_t t;
+                            time(&t);
+                            localtime_r(&t, &survivor_array[j].helped_time);
+                            
+                            printf("Survivor %d rescued by drone %d!\n", j, i);
+                            missions_completed++;
+                            
+                            // Reset drone to idle
+                            drone_fleet[i].status = IDLE;
+                            
+                            break;
+                        }
+                    }
+                    pthread_mutex_unlock(&survivors_mutex);
+                }
+            }
+            
+            pthread_mutex_unlock(&drone_fleet[i].lock);
+        }
+        
+        if (missions_completed > 0) {
+            printf("AI Controller: Completed %d missions\n", missions_completed);
         }
         
         // Sleep to avoid excessive CPU usage
-        usleep(200000); // 200ms
+        sleep(1);
     }
     
     return NULL;

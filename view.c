@@ -80,9 +80,6 @@ void draw_cell(int x, int y, SDL_Color color) {
     
     // Draw the cell
     SDL_RenderFillRect(renderer, &rect);
-    
-    printf("Drew cell at (%d,%d) = pixel (%d,%d) with color (%d,%d,%d)\n",
-           x, y, y * CELL_SIZE, x * CELL_SIZE, color.r, color.g, color.b);
 }
 
 void draw_drones() {
@@ -132,12 +129,11 @@ void draw_survivors() {
     
     // Draw each survivor in the array
     for (int i = 0; i < num_survivors; i++) {
-        // Only draw survivors that are waiting for help (status 0)
-        if (survivor_array[i].status == 0) {
+        // Only draw survivors that are waiting for help (status 0) or being helped (status 1)
+        // Don't draw rescued survivors (status 2)
+        if (survivor_array[i].status == 0 || survivor_array[i].status == 1) {
             draw_cell(survivor_array[i].coord.x, survivor_array[i].coord.y, RED);
             survivors_drawn++;
-            printf("Drawing survivor at (%d,%d)\n", 
-                   survivor_array[i].coord.x, survivor_array[i].coord.y);
         }
     }
     
@@ -145,9 +141,9 @@ void draw_survivors() {
     pthread_mutex_unlock(&survivors_mutex);
     
     if (survivors_drawn > 0) {
-        printf("Drew %d survivors from survivor array\n", survivors_drawn);
+        printf("Drew %d active survivors\n", survivors_drawn);
     } else {
-        printf("No survivors found to draw\n");
+        printf("No active survivors to draw\n");
     }
 }
 
@@ -195,17 +191,25 @@ int draw_map() {
     
     // Update the window title with current statistics
     pthread_mutex_lock(&survivors_mutex);
-    int survivor_count = num_survivors;
-    pthread_mutex_unlock(&survivors_mutex);
+    int survivor_count = 0;
+    int helped_count = 0;
+    int rescued_count = 0;
     
-    pthread_mutex_lock(&helpedsurvivors->lock);
-    int helped_count = helpedsurvivors->number_of_elements;
-    pthread_mutex_unlock(&helpedsurvivors->lock);
+    for (int i = 0; i < num_survivors; i++) {
+        if (survivor_array[i].status == 0) {
+            survivor_count++;
+        } else if (survivor_array[i].status == 1) {
+            helped_count++;
+        } else if (survivor_array[i].status == 2) {
+            rescued_count++;
+        }
+    }
+    pthread_mutex_unlock(&survivors_mutex);
     
     char title[100];
     snprintf(title, sizeof(title), 
-             "Drone Simulator | Survivors: %d | Helped: %d | Drones: %d",
-             survivor_count, helped_count, num_drones);
+             "Drone Simulator | Waiting: %d | Being Helped: %d | Rescued: %d | Drones: %d",
+             survivor_count, helped_count, rescued_count, num_drones);
     SDL_SetWindowTitle(window, title);
 
     // Present the rendered frame

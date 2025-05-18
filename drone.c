@@ -68,7 +68,7 @@ void initialize_drones() {
 void* drone_behavior(void *arg) {
     Drone *d = (Drone*)arg;
     
-    printf("Drone %d: Thread started\n", d->id);
+    printf("Drone %d: Thread starting behavior with status %d\n", d->id, d->status);
     
     // Make this thread cancelable
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
@@ -84,26 +84,22 @@ void* drone_behavior(void *arg) {
         
         // Only update coordinates if on mission
         if(status == ON_MISSION) {
-            // Calculate new position
+            // Calculate new position (move one step in each iteration)
             Coord new_pos = current;
             
+            // Move in X direction
             if(new_pos.x < target.x) new_pos.x++;
             else if(new_pos.x > target.x) new_pos.x--;
             
+            // Move in Y direction
             if(new_pos.y < target.y) new_pos.y++;
             else if(new_pos.y > target.y) new_pos.y--;
             
-            // Update position
-            d->coord = new_pos;
-            
-            // Check if reached target
-            if(new_pos.x == target.x && new_pos.y == target.y) {
-                d->status = IDLE;
-                printf("Drone %d: Mission completed at (%d,%d)!\n", 
-                       d->id, new_pos.x, new_pos.y);
-            }
-            else if (new_pos.x != current.x || new_pos.y != current.y) {
-                // Only log if position changed
+            // Check if position actually changed
+            if(new_pos.x != current.x || new_pos.y != current.y) {
+                // Update position
+                d->coord = new_pos;
+                
                 printf("Drone %d: Moving from (%d,%d) to (%d,%d), target: (%d,%d)\n", 
                        d->id, current.x, current.y, 
                        new_pos.x, new_pos.y, 
@@ -118,8 +114,8 @@ void* drone_behavior(void *arg) {
         
         pthread_mutex_unlock(&d->lock);
         
-        // Sleep to control drone movement speed
-        usleep(500000); // 500ms
+        // Sleep to control drone movement speed (shorter for more responsive movement)
+        usleep(300000); // 300ms
     }
     
     return NULL;
