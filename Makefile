@@ -5,9 +5,9 @@ LDFLAGS = -pthread
 # SDL flags - different for Linux and macOS
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Linux)
-    SDL_FLAGS = -lSDL2
+    SDL_FLAGS = -lSDL2 -lSDL2_ttf
 else ifeq ($(UNAME_S),Darwin)
-    SDL_FLAGS = -F/Library/Frameworks -framework SDL2
+    SDL_FLAGS = -F/Library/Frameworks -framework SDL2 -lSDL2_ttf
 else
     $(error Unsupported operating system)
 endif

@@ -1,4 +1,3 @@
-// controller.c
 #include "headers/globals.h"
 #include "headers/map.h"
 #include "headers/drone.h"
@@ -22,6 +21,13 @@ pthread_t ai_thread;
 
 // Graceful shutdown flag
 volatile int running = 1;
+
+// Statistics variables - made global for view.c to access
+int waiting_count = 0;
+int helped_count = 0;
+int rescued_count = 0;
+int idle_drones = 0;
+int mission_drones = 0;
 
 /**
  * Signal handler for graceful shutdown
@@ -94,6 +100,54 @@ void cleanup_resources()
 }
 
 /**
+ * Update all statistics for the simulation
+ * Used by both controller and view
+ */
+void update_simulation_stats()
+{
+    // Reset counters
+    waiting_count = 0;
+    helped_count = 0;
+    idle_drones = 0;
+    mission_drones = 0;
+    
+    // Count survivors by status
+    pthread_mutex_lock(&survivors_mutex);
+    for (int i = 0; i < num_survivors; i++)
+    {
+        if (survivor_array[i].status == 0)
+        {
+            waiting_count++;
+        }
+        else if (survivor_array[i].status == 1)
+        {
+            helped_count++;
+        }
+        else if (survivor_array[i].status == 2)
+        {
+            survivor_array[i].status = 3;
+            rescued_count++;
+        }
+    }
+    pthread_mutex_unlock(&survivors_mutex);
+    
+    // Count drones by status
+    for (int i = 0; i < num_drones; i++)
+    {
+        pthread_mutex_lock(&drone_fleet[i].lock);
+        if (drone_fleet[i].status == IDLE)
+        {
+            idle_drones++;
+        }
+        else if (drone_fleet[i].status == ON_MISSION)
+        {
+            mission_drones++;
+        }
+        pthread_mutex_unlock(&drone_fleet[i].lock);
+    }
+}
+
+/**
  * Main function - entry point for the drone coordination system
  */
 int main()
@@ -154,7 +208,6 @@ int main()
     // Start main rendering loop
     int frame_count = 0;
     running = 1;
-    int rescued_count = 0;
 
     while (running)
     {
@@ -178,43 +231,16 @@ int main()
             draw_drones();
         }
 
-        pthread_mutex_lock(&survivors_mutex);
+        // Update simulation statistics (used by both controller and view)
+        update_simulation_stats();
 
-        // Count survivors by status
-        int waiting_count = 0;
-        int helped_count = 0;
-
-        for (int i = 0; i < num_survivors; i++)
-        {
-            if (survivor_array[i].status == 0)
-            {
-                waiting_count++;
-            }
-            else if (survivor_array[i].status == 1)
-            {
-                helped_count++;
-            }
-            else if (survivor_array[i].status == 2)
-            {
-                survivor_array[i].status = 3;
-                rescued_count++;
-            }
-        }
-
-        pthread_mutex_unlock(&survivors_mutex);
-
-        char title[100];
-        snprintf(title, sizeof(title),
-                 "Drone Simulator | Waiting: %d | Being Helped: %d | Rescued: %d | Drones: %d",
-                 waiting_count, helped_count, rescued_count, num_drones);
-        SDL_SetWindowTitle(window, title);
+        // Draw the info panel (will use the updated stats)
+        draw_info_panel();
 
         // Print statistics every 50 frames
-        if (frame_count % 50 == 0){
-
-            printf("Stats: Waiting: %d, Being Helped: %d, Rescued: %d, Drones: %d\n",
-                waiting_count, helped_count, rescued_count, num_drones);
-
+        if (frame_count % 50 == 0) {
+            printf("Stats: Waiting: %d, Being Helped: %d, Rescued: %d, Drones: Idle=%d, On Mission=%d\n",
+                   waiting_count, helped_count, rescued_count, idle_drones, mission_drones);
         }
 
         // Present the frame
