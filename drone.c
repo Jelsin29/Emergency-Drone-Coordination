@@ -229,6 +229,15 @@ void *handle_drone_client(void *arg)
             d->status = DISCONNECTED;
             pthread_mutex_unlock(&d->lock);
 
+            if(drones->removenode(drones, node) == 0)
+            {
+                printf("Drone %d removed from list\n", d->id);
+            }
+            else
+            {
+                printf("Failed to remove drone %d from list\n", d->id);
+            }
+
             break;
         }
 
