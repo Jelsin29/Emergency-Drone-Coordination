@@ -6,8 +6,10 @@
 
 // AI Mission Assignment
 void* ai_controller(void *args);
+void* drone_centric_ai_controller(void *args);
 void assign_mission(Drone *drone, int survivor_index);
 int calculate_distance(Coord a, Coord b);
-Drone*  find_closest_idle_drone(int survivor_index);
+Drone* find_closest_idle_drone(int survivor_index);
+int find_closest_waiting_survivor(Drone* drone);
 
 #endif

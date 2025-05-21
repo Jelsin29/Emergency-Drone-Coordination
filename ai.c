@@ -145,6 +145,158 @@ Drone* find_closest_idle_drone(int survivor_index) {
 }
 
 /**
+ * Find the closest waiting survivor to a specific drone
+ * @param drone Pointer to the drone
+ * @return Index of the closest waiting survivor, or -1 if none available
+ */
+int find_closest_waiting_survivor(Drone* drone) {
+    if (!drone) {
+        fprintf(stderr, "Invalid drone pointer in find_closest_waiting_survivor\n");
+        return -1;
+    }
+    
+    int closest_survivor_index = -1;
+    int min_distance = INT_MAX;
+    
+    // Lock the drone to get its current position
+    pthread_mutex_lock(&drone->lock);
+    Coord drone_pos = drone->coord;
+    pthread_mutex_unlock(&drone->lock);
+    
+    // Lock the survivors mutex for iteration
+    pthread_mutex_lock(&survivors_mutex);
+    
+    // Iterate through all survivors to find the closest waiting one
+    for (int i = 0; i < num_survivors; i++) {
+        // Only consider survivors who are waiting for help (status 0)
+        if (survivor_array[i].status == 0) {
+            Coord survivor_pos = survivor_array[i].coord;
+            int dist = calculate_distance(drone_pos, survivor_pos);
+            
+            if (dist < min_distance) {
+                min_distance = dist;
+                closest_survivor_index = i;
+            }
+        }
+    }
+    
+    pthread_mutex_unlock(&survivors_mutex);
+    
+    return closest_survivor_index;
+}
+
+/**
+ * Alternative AI controller function - loops through drones instead of survivors
+ * Assigns the closest survivor to each idle drone
+ * @param args Unused parameter
+ * @return NULL
+ */
+void *drone_centric_ai_controller(void *args) {
+    (void)args; // Unused parameter
+    
+    // Give the system time to initialize
+    sleep(3);
+    
+    printf("Starting drone-centric AI controller...\n");
+    
+    while (1) {
+        int missions_assigned = 0;
+        
+        // First phase: For each idle drone, find the closest survivor and assign a mission
+        pthread_mutex_lock(&drones->lock);
+        
+        Node* current = drones->head;
+        while (current != NULL) {
+            Drone* d = (Drone*)current->data;
+            
+            // Lock this specific drone to check its status
+            pthread_mutex_lock(&d->lock);
+            
+            // Only consider idle drones
+            if (d->status == IDLE) {
+                // Unlock drone before searching for survivor to avoid deadlocks
+                pthread_mutex_unlock(&d->lock);
+                
+                // Find the closest waiting survivor
+                int survivor_index = find_closest_waiting_survivor(d);
+                
+                // If a waiting survivor was found, assign the drone to help
+                if (survivor_index >= 0) {
+                    assign_mission(d, survivor_index);
+                    missions_assigned++;
+                    printf("Drone %d assigned to closest survivor %d\n", d->id, survivor_index);
+                }
+            } else {
+                pthread_mutex_unlock(&d->lock);
+            }
+            
+            current = current->next;
+        }
+        
+        pthread_mutex_unlock(&drones->lock);
+        
+        // Second phase: Check for mission completions (same as original controller)
+        int missions_completed = 0;
+        
+        pthread_mutex_lock(&drones->lock);
+        
+        current = drones->head;
+        while (current != NULL) {
+            Drone* d = (Drone*)current->data;
+            
+            pthread_mutex_lock(&d->lock);
+            
+            // If drone is on mission, check if it reached its target
+            if (d->status == ON_MISSION) {
+                if (d->coord.x == d->target.x && d->coord.y == d->target.y) {
+                    
+                    // Find which survivor this drone was helping
+                    pthread_mutex_lock(&survivors_mutex);
+                    for (int j = 0; j < num_survivors; j++) {
+                        if (survivor_array[j].status == 1 && 
+                            survivor_array[j].coord.x == d->target.x &&
+                            survivor_array[j].coord.y == d->target.y) {
+                            
+                            // Mark survivor as rescued
+                            survivor_array[j].status = 2; // 2 = rescued (won't be drawn)
+                            
+                            // Set rescue timestamp
+                            time_t t;
+                            time(&t);
+                            localtime_r(&t, &survivor_array[j].helped_time);
+                            
+                            missions_completed++;
+                            printf("Drone %d completed mission, rescued survivor %d\n", d->id, j);
+                            
+                            // Reset drone to idle
+                            d->status = IDLE;
+                            
+                            break;
+                        }
+                    }
+                    pthread_mutex_unlock(&survivors_mutex);
+                }
+            }
+            
+            pthread_mutex_unlock(&d->lock);
+            current = current->next;
+        }
+        
+        pthread_mutex_unlock(&drones->lock);
+        
+        if (missions_assigned > 0 || missions_completed > 0) {
+            printf("This cycle: %d missions assigned, %d missions completed\n", 
+                  missions_assigned, missions_completed);
+        }
+        
+        // Sleep to avoid excessive CPU usage
+        sleep(1);
+    }
+    
+    return NULL;
+}
+
+/**
  * Main AI controller function - runs in a separate thread
  * Manages mission assignment and completion
  * @param args Unused parameter

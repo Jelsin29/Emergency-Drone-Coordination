@@ -201,7 +201,7 @@ int main()
     }
 
     // Start AI controller thread
-    int ai_result = pthread_create(&ai_thread, NULL, ai_controller, NULL);
+    int ai_result = pthread_create(&ai_thread, NULL, drone_centric_ai_controller, NULL);
     if (ai_result != 0)
     {
         fprintf(stderr, "Error creating AI controller thread: %d\n", ai_result);
