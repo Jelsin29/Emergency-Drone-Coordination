@@ -29,12 +29,13 @@ MAIN = drone_simulator
 # Test executables
 LIST_TEST = tests/listtest
 SDL_TEST = tests/sdltest
+MULTI_DRONE_TEST = tests/multi_drone_test
 
 # Client drone executable
 CLIENT_DRONE = drone_client
 
 # Default target
-all: $(MAIN) $(LIST_TEST) $(SDL_TEST) $(CLIENT_DRONE)
+all: $(MAIN) $(LIST_TEST) $(SDL_TEST) $(CLIENT_DRONE) $(MULTI_DRONE_TEST)
 
 # Main program
 $(MAIN): $(OBJ)
@@ -55,6 +56,10 @@ $(SDL_TEST): tests/sdltest.o
 $(CLIENT_DRONE): clientDrone.o map.o list.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(JSON_FLAGS)
 
+# Multi drone test program
+$(MULTI_DRONE_TEST): tests/multi_drone_test.c
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(JSON_FLAGS)
+
 # Run the simulator
 run: $(MAIN)
 	./$(MAIN)
@@ -71,6 +76,10 @@ test_sdl: $(SDL_TEST)
 run_client: $(CLIENT_DRONE)
 	./$(CLIENT_DRONE)
 
+# Run multi drone test
+run_multi_drone: $(MULTI_DRONE_TEST)
+	./$(MULTI_DRONE_TEST)
+
 # Run Valgrind on main program
 valgrind_main: $(MAIN)
 	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./$(MAIN)
@@ -83,12 +92,16 @@ valgrind_list: $(LIST_TEST)
 valgrind_sdl: $(SDL_TEST)
 	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./$(SDL_TEST)
 
+# Run Valgrind on multi drone test
+valgrind_multi_drone: $(MULTI_DRONE_TEST)
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./$(MULTI_DRONE_TEST)
+
 # Run Valgrind on all
-valgrind_all: valgrind_main valgrind_list valgrind_sdl
+valgrind_all: valgrind_main valgrind_list valgrind_sdl valgrind_multi_drone
 
 # Clean up
 clean:
-	rm -f $(MAIN) $(OBJ) $(LIST_TEST) $(SDL_TEST) $(CLIENT_DRONE) clientDrone.o tests/*.o
+	rm -f $(MAIN) $(OBJ) $(LIST_TEST) $(SDL_TEST) $(CLIENT_DRONE) $(MULTI_DRONE_TEST) clientDrone.o tests/*.o
 
 # Dependencies
 controller.o: controller.c headers/globals.h headers/map.h headers/drone.h headers/survivor.h headers/ai.h headers/list.h headers/view.h
@@ -102,4 +115,4 @@ tests/listtest.o: tests/listtest.c headers/list.h headers/survivor.h
 tests/sdltest.o: tests/sdltest.c
 clientDrone.o: clientDrone.c headers/drone.h headers/globals.h headers/map.h
 
-.PHONY: all clean run test_list test_sdl run_client valgrind_main valgrind_list valgrind_sdl valgrind_all
+.PHONY: all clean run test_list test_sdl run_client run_multi_drone valgrind_main valgrind_list valgrind_sdl valgrind_multi_drone valgrind_all
