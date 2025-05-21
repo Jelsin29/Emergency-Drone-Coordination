@@ -416,34 +416,44 @@ void draw_drones() {
     // Lock the drones list for iteration
     pthread_mutex_lock(&drones->lock);
     
+    printf("Drawing drones, list has %d drones\n", drones->number_of_elements);
+    
     // Iterate through all drones in the list
     Node* current = drones->head;
+    int drawn = 0;
+    
     while (current != NULL) {
         Drone* d = (Drone*)current->data;
         
         // Lock this specific drone while drawing it
         pthread_mutex_lock(&d->lock);
         
-        // Choose color based on drone status
-        SDL_Color color = (d->status == IDLE) ? BLUE : GREEN;
-        
-        // Draw the drone
-        draw_cell(d->coord.x, d->coord.y, color);
-        
-        // Draw mission line if on mission
-        if (d->status == ON_MISSION) {
-            SDL_SetRenderDrawColor(renderer, GREEN.r, GREEN.g, GREEN.b, GREEN.a);
-            SDL_RenderDrawLine(
-                renderer,
-                d->coord.y * CELL_SIZE + CELL_SIZE / 2,
-                d->coord.x * CELL_SIZE + CELL_SIZE / 2,
-                d->target.y * CELL_SIZE + CELL_SIZE / 2,
-                d->target.x * CELL_SIZE + CELL_SIZE / 2);
+        // Only draw drones that are IDLE or ON_MISSION (not DISCONNECTED)
+        if (d->status == IDLE || d->status == ON_MISSION) {
+            // Choose color based on drone status
+            SDL_Color color = (d->status == IDLE) ? BLUE : GREEN;
+            
+            // Draw the drone
+            draw_cell(d->coord.x, d->coord.y, color);
+            drawn++;
+            
+            // Draw mission line if on mission
+            if (d->status == ON_MISSION) {
+                SDL_SetRenderDrawColor(renderer, GREEN.r, GREEN.g, GREEN.b, GREEN.a);
+                SDL_RenderDrawLine(
+                    renderer,
+                    d->coord.y * CELL_SIZE + CELL_SIZE / 2,
+                    d->coord.x * CELL_SIZE + CELL_SIZE / 2,
+                    d->target.y * CELL_SIZE + CELL_SIZE / 2,
+                    d->target.x * CELL_SIZE + CELL_SIZE / 2);
+            }
         }
         
         pthread_mutex_unlock(&d->lock);
         current = current->next;
     }
+    
+    printf("Drew %d drones\n", drawn);
     
     pthread_mutex_unlock(&drones->lock);
 }

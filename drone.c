@@ -10,6 +10,10 @@
 #include <arpa/inet.h>
 #include <json-c/json.h>
 #include <netinet/in.h>
+#include <errno.h>      // For errno constants
+#include <string.h>     // For strerror()
+#include <sys/socket.h> // For socket options
+#include <sys/time.h>   // For struct timeval
 
 int num_drones = 20; // Default fleet size
 #define SERVER_PORT 8080
@@ -84,18 +88,25 @@ void *drone_server(void *arg)
  * @param arg Pointer to socket descriptor
  * @return NULL
  */
-void *handle_drone_client(void *arg)
-{
+void *handle_drone_client(void *arg) {
     int sock = *((int *)arg);
     free(arg); // Free the allocated memory for the socket pointer
+
+    // Set socket timeout to detect disconnections faster
+    struct timeval tv;
+    tv.tv_sec = 5;  // 5 seconds timeout
+    tv.tv_usec = 0;
+    if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv) < 0) {
+        perror("Failed to set socket timeout");
+        // Continue anyway - this is just an optimization
+    }
 
     char buffer[4096];
     ssize_t bytes_received;
 
     // Receive HANDSHAKE message
     bytes_received = recv(sock, buffer, sizeof(buffer) - 1, 0);
-    if (bytes_received <= 0)
-    {
+    if (bytes_received <= 0) {
         if (bytes_received == 0)
             printf("Client disconnected before handshake\n");
         else
@@ -109,8 +120,7 @@ void *handle_drone_client(void *arg)
 
     // Parse the received JSON data
     struct json_object *parsed_json = json_tokener_parse(buffer);
-    if (parsed_json == NULL)
-    {
+    if (parsed_json == NULL) {
         printf("Failed to parse JSON data\n");
         close(sock);
         return NULL;
@@ -119,8 +129,7 @@ void *handle_drone_client(void *arg)
     // Verify it's a handshake message
     struct json_object *type_obj;
     if (!json_object_object_get_ex(parsed_json, "type", &type_obj) ||
-        strcmp(json_object_get_string(type_obj), "HANDSHAKE") != 0)
-    {
+        strcmp(json_object_get_string(type_obj), "HANDSHAKE") != 0) {
         printf("Not a valid handshake message\n");
         json_object_put(parsed_json);
         close(sock);
@@ -138,8 +147,7 @@ void *handle_drone_client(void *arg)
 
     // Get drone status
     struct json_object *status_obj;
-    if (json_object_object_get_ex(parsed_json, "status", &status_obj))
-    {
+    if (json_object_object_get_ex(parsed_json, "status", &status_obj)) {
         const char *status_str = json_object_get_string(status_obj);
         if (strcmp(status_str, "IDLE") == 0)
             drone.status = IDLE;
@@ -148,19 +156,16 @@ void *handle_drone_client(void *arg)
         else
             drone.status = IDLE; // Default to IDLE
     }
-    else
-    {
+    else {
         drone.status = IDLE; // Default to IDLE
     }
 
     // Get drone coordinates
     struct json_object *coord_obj;
-    if (json_object_object_get_ex(parsed_json, "coord", &coord_obj))
-    {
+    if (json_object_object_get_ex(parsed_json, "coord", &coord_obj)) {
         struct json_object *x_obj, *y_obj;
         if (json_object_object_get_ex(coord_obj, "x", &x_obj) &&
-            json_object_object_get_ex(coord_obj, "y", &y_obj))
-        {
+            json_object_object_get_ex(coord_obj, "y", &y_obj)) {
             drone.coord.x = json_object_get_int(x_obj);
             drone.coord.y = json_object_get_int(y_obj);
         }
@@ -182,10 +187,13 @@ void *handle_drone_client(void *arg)
     // Initialize the socket field with the client socket
     drone.socket = sock;
     
+    // Debug print
+    printf("Adding drone %d to list, status: %d, coord: (%d,%d)\n", 
+           drone.id, drone.status, drone.coord.x, drone.coord.y);
+    
     Node *node = drones->add(drones, &drone);
 
-    if (!node)
-    {
+    if (!node) {
         fprintf(stderr, "Failed to add drone %d to list\n", drone.id);
         pthread_mutex_destroy(&drone.lock);
         close(sock);
@@ -194,6 +202,9 @@ void *handle_drone_client(void *arg)
 
     // Get a pointer to the actual drone in the list
     Drone *d = (Drone *)node->data;
+    
+    printf("Successfully added drone %d, list now has %d drones\n", 
+           d->id, drones->number_of_elements);
 
     // Send HANDSHAKE_ACK response
     struct json_object *handshake_ack = json_object_new_object();
@@ -214,19 +225,24 @@ void *handle_drone_client(void *arg)
     printf("Handshake acknowledgment sent to drone %d\n", d->id);
 
     // Main loop to handle communication with this drone
-    while (1)
-    {
+    while (1) {
         bytes_received = recv(sock, buffer, sizeof(buffer) - 1, 0);
-        if (bytes_received <= 0)
-        {
+        if (bytes_received <= 0) {
             if (bytes_received == 0)
-                printf("Drone %d disconnected\n", d->id);
+                printf("Drone %d disconnected (clean close)\n", d->id);
+            else if (errno == EAGAIN || errno == EWOULDBLOCK)
+                printf("Drone %d timeout - marking as disconnected\n", d->id);
             else
-                perror("Error receiving from drone");
+                printf("Drone %d disconnected with error: %s\n", d->id, strerror(errno));
 
             // Mark drone as disconnected
             pthread_mutex_lock(&d->lock);
+            printf("Marking drone %d as DISCONNECTED\n", d->id);
             d->status = DISCONNECTED;
+            
+            // Update last update time to start the cleanup timer
+            time_t t = time(NULL);
+            localtime_r(&t, &d->last_update);
             pthread_mutex_unlock(&d->lock);
 
             break;
@@ -235,32 +251,34 @@ void *handle_drone_client(void *arg)
         buffer[bytes_received] = '\0';
         printf("Received from drone %d: %s\n", d->id, buffer);
 
+        // Reset socket timeout after each successful message
+        // This prevents timeouts during normal operation
+        if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv) < 0) {
+            perror("Failed to reset socket timeout");
+            // Continue anyway
+        }
+
         // Parse the received message
         parsed_json = json_tokener_parse(buffer);
-        if (parsed_json == NULL)
-        {
+        if (parsed_json == NULL) {
             printf("Failed to parse JSON data from drone %d\n", d->id);
             continue;
         }
 
         // Handle different message types (STATUS_UPDATE, MISSION_COMPLETE, etc.)
-        if (json_object_object_get_ex(parsed_json, "type", &type_obj))
-        {
+        if (json_object_object_get_ex(parsed_json, "type", &type_obj)) {
             const char *msg_type = json_object_get_string(type_obj);
 
-            if (strcmp(msg_type, "STATUS_UPDATE") == 0)
-            {
+            if (strcmp(msg_type, "STATUS_UPDATE") == 0) {
                 // Handle status update
                 pthread_mutex_lock(&d->lock);
 
                 // Update drone location
                 struct json_object *location_obj;
-                if (json_object_object_get_ex(parsed_json, "location", &location_obj))
-                {
+                if (json_object_object_get_ex(parsed_json, "location", &location_obj)) {
                     struct json_object *x_obj, *y_obj;
                     if (json_object_object_get_ex(location_obj, "x", &x_obj) &&
-                        json_object_object_get_ex(location_obj, "y", &y_obj))
-                    {
+                        json_object_object_get_ex(location_obj, "y", &y_obj)) {
                         d->coord.x = json_object_get_int(x_obj);
                         d->coord.y = json_object_get_int(y_obj);
                     }
@@ -268,8 +286,7 @@ void *handle_drone_client(void *arg)
 
                 // Update status
                 struct json_object *status_obj;
-                if (json_object_object_get_ex(parsed_json, "status", &status_obj))
-                {
+                if (json_object_object_get_ex(parsed_json, "status", &status_obj)) {
                     const char *status_str = json_object_get_string(status_obj);
                     if (strcmp(status_str, "idle") == 0)
                         d->status = IDLE;
@@ -283,17 +300,19 @@ void *handle_drone_client(void *arg)
 
                 pthread_mutex_unlock(&d->lock);
             }
-            else if (strcmp(msg_type, "MISSION_COMPLETE") == 0)
-            {
+            else if (strcmp(msg_type, "MISSION_COMPLETE") == 0) {
                 // Handle mission completion
                 pthread_mutex_lock(&d->lock);
                 d->status = IDLE;
+                
+                // Update last update time
+                time(&t);
+                localtime_r(&t, &d->last_update);
                 pthread_mutex_unlock(&d->lock);
 
                 printf("Drone %d completed mission\n", d->id);
             }
-            else if (strcmp(msg_type, "HEARTBEAT_RESPONSE") == 0)
-            {
+            else if (strcmp(msg_type, "HEARTBEAT_RESPONSE") == 0) {
                 // Update last contact time
                 pthread_mutex_lock(&d->lock);
                 time(&t);
@@ -305,7 +324,12 @@ void *handle_drone_client(void *arg)
         json_object_put(parsed_json);
     }
 
+    // Clean up - close the socket
     close(sock);
+    
+    // We don't need to remove the drone from the list here
+    // The cleanup_disconnected_drones function will do that after the timeout
+    
     return NULL;
 }
 

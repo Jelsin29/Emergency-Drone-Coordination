@@ -1,0 +1,542 @@
+Emergency Drone Coordination System - Phase 2
+---------------------------------------------
+Lists initialized. Drone list capacity: 100
+Creating window with dimensions: 1000 x 600 (including panel width: 200)
+Drone server listening on port 8080...
+Drawing drones, list has 0 drones
+Drew 0 drones
+Stats: Waiting: 0, Being Helped: 0, Rescued: 0, Drones: Idle=0, On Mission=0, Total=0
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Stats: Waiting: 12, Being Helped: 0, Rescued: 0, Drones: Idle=0, On Mission=0, Total=0
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+Drawing drones, list has 0 drones
+Drew 0 drones
+New drone connection accepted
+Received data: { "type": "HANDSHAKE", "drone_id": 0, "status": "IDLE", "coord": { "x": 9, "y": 24 } }
+Adding drone 0 to list, status: 0, coord: (9,24)
+Successfully added drone 0, list now has 1 drones
+Handshake acknowledgment sent to drone 0
+Drawing drones, list has 1 drones
+Drew 1 drones
+Drawing drones, list has 1 drones
+Drew 1 drones
+Drawing drones, list has 1 drones
+Drew 1 drones
+Drawing drones, list has 1 drones
+Drew 1 drones
+Drawing drones, list has 1 drones
+Drew 1 drones
+Drawing drones, list has 1 drones
+Drew 1 drones
+Drawing drones, list has 1 drones
+Drew 1 drones
+Drawing drones, list has 1 drones
+Drew 1 drones
+Drawing drones, list has 1 drones
+Drew 1 drones
+Drawing drones, list has 1 drones
+Drew 1 drones
+Mission M0 assigned to drone 0: Target (7, 28)
+Drawing drones, list has 1 drones
+Drew 1 drones
+Drawing drones, list has 1 drones
+Drew 1 drones
+Received from drone 0: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863905, "location": { "x": 8, "y": 25 }, "status": "busy" }
+Drawing drones, list has 1 drones
+Drew 1 drones
+Drawing drones, list has 1 drones
+Drew 1 drones
+Drawing drones, list has 1 drones
+Drew 1 drones
+Received from drone 0: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863906, "location": { "x": 7, "y": 26 }, "status": "busy" }
+Drawing drones, list has 1 drones
+Drew 1 drones
+Drawing drones, list has 1 drones
+Drew 1 drones
+Drawing drones, list has 1 drones
+Drew 1 drones
+Received from drone 0: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863906, "location": { "x": 7, "y": 27 }, "status": "busy" }
+Drawing drones, list has 1 drones
+Drew 1 drones
+Drawing drones, list has 1 drones
+Drew 1 drones
+Drawing drones, list has 1 drones
+Drew 1 drones
+Received from drone 0: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863906, "location": { "x": 7, "y": 28 }, "status": "busy" }{ "type": "MISSION_COMPLETE", "drone_id": 0, "timestamp": 1747863906, "success": true, "details": "Mission completed successfully." }
+Drawing drones, list has 1 drones
+Drew 1 drones
+Drawing drones, list has 1 drones
+Drew 1 drones
+Drawing drones, list has 1 drones
+Drew 1 drones
+Drawing drones, list has 1 drones
+Drew 1 drones
+Drawing drones, list has 1 drones
+Drew 1 drones
+Drawing drones, list has 1 drones
+Drew 1 drones
+Drawing drones, list has 1 drones
+Drew 1 drones
+Drawing drones, list has 1 drones
+Drew 1 drones
+Drawing drones, list has 1 drones
+Drew 1 drones
+Drawing drones, list has 1 drones
+Drew 1 drones
+New drone connection accepted
+Received data: { "type": "HANDSHAKE", "drone_id": 0, "status": "IDLE", "coord": { "x": 19, "y": 28 } }
+Adding drone 1 to list, status: 0, coord: (19,28)
+Successfully added drone 1, list now has 2 drones
+Handshake acknowledgment sent to drone 1
+Drawing drones, list has 2 drones
+Drew 2 drones
+Running cleanup_disconnected_drones()
+Cleanup complete, removed 0 drones
+Drawing drones, list has 2 drones
+Drew 2 drones
+Drawing drones, list has 2 drones
+Drew 2 drones
+Drawing drones, list has 2 drones
+Drew 2 drones
+Drawing drones, list has 2 drones
+Drew 2 drones
+Drawing drones, list has 2 drones
+Drew 2 drones
+Drawing drones, list has 2 drones
+Drew 2 drones
+Drawing drones, list has 2 drones
+Drew 2 drones
+Mission M1 assigned to drone 0: Target (5, 31)
+Mission M2 assigned to drone 1: Target (7, 25)
+Drawing drones, list has 2 drones
+Drew 2 drones
+Received from drone 1: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863908, "location": { "x": 18, "y": 27 }, "status": "busy" }
+Drawing drones, list has 2 drones
+Drew 2 drones
+Stats: Waiting: 13, Being Helped: 2, Rescued: 1, Drones: Idle=0, On Mission=2, Total=2
+Drone 0 timeout - marking as disconnected
+Marking drone 0 as DISCONNECTED
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Received from drone 1: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863909, "location": { "x": 17, "y": 26 }, "status": "busy" }
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Received from drone 1: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863909, "location": { "x": 16, "y": 25 }, "status": "busy" }
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Received from drone 1: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863909, "location": { "x": 15, "y": 25 }, "status": "busy" }
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Received from drone 1: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863909, "location": { "x": 14, "y": 25 }, "status": "busy" }
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Received from drone 1: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863910, "location": { "x": 13, "y": 25 }, "status": "busy" }
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Received from drone 1: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863910, "location": { "x": 12, "y": 25 }, "status": "busy" }
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Received from drone 1: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863910, "location": { "x": 11, "y": 25 }, "status": "busy" }
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Received from drone 1: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863911, "location": { "x": 10, "y": 25 }, "status": "busy" }
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Received from drone 1: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863911, "location": { "x": 9, "y": 25 }, "status": "busy" }
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Received from drone 1: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863911, "location": { "x": 8, "y": 25 }, "status": "busy" }
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Received from drone 1: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863912, "location": { "x": 7, "y": 25 }, "status": "busy" }{ "type": "MISSION_COMPLETE", "drone_id": 0, "timestamp": 1747863912, "success": true, "details": "Mission completed successfully." }
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Mission M3 assigned to drone 1: Target (27, 27)
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Stats: Waiting: 17, Being Helped: 2, Rescued: 2, Drones: Idle=0, On Mission=1, Total=1
+Received from drone 1: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863913, "location": { "x": 8, "y": 26 }, "status": "busy" }
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Received from drone 1: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863914, "location": { "x": 9, "y": 27 }, "status": "busy" }
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Received from drone 1: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863914, "location": { "x": 10, "y": 27 }, "status": "busy" }
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Received from drone 1: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863914, "location": { "x": 11, "y": 27 }, "status": "busy" }
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Received from drone 1: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863915, "location": { "x": 12, "y": 27 }, "status": "busy" }
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Received from drone 1: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863915, "location": { "x": 13, "y": 27 }, "status": "busy" }
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Received from drone 1: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863915, "location": { "x": 14, "y": 27 }, "status": "busy" }
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Received from drone 1: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863916, "location": { "x": 15, "y": 27 }, "status": "busy" }
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Received from drone 1: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863916, "location": { "x": 16, "y": 27 }, "status": "busy" }
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Drawing drones, list has 2 drones
+Drew 1 drones
+Stats: Active drones: 1, Disconnected drones: 1
+Received from drone 1: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863916, "location": { "x": 17, "y": 27 }, "status": "busy" }
+New drone connection accepted
+Received data: { "type": "HANDSHAKE", "drone_id": 0, "status": "IDLE", "coord": { "x": 1, "y": 4 } }
+Adding drone 2 to list, status: 0, coord: (1,4)
+Successfully added drone 2, list now has 3 drones
+Handshake acknowledgment sent to drone 2
+Drawing drones, list has 3 drones
+Drew 2 drones
+Stats: Active drones: 2, Disconnected drones: 1
+Drawing drones, list has 3 drones
+Drew 2 drones
+Stats: Active drones: 2, Disconnected drones: 1
+Mission M4 assigned to drone 2: Target (0, 11)
+Drawing drones, list has 3 drones
+Drew 2 drones
+Stats: Active drones: 2, Disconnected drones: 1
+Received from drone 1: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863916, "location": { "x": 18, "y": 27 }, "status": "busy" }
+Received from drone 2: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863916, "location": { "x": 0, "y": 5 }, "status": "busy" }
+Drawing drones, list has 3 drones
+Drew 2 drones
+Stats: Active drones: 2, Disconnected drones: 1
+Drawing drones, list has 3 drones
+Drew 2 drones
+Stats: Active drones: 2, Disconnected drones: 1
+Drawing drones, list has 3 drones
+Drew 2 drones
+Stats: Active drones: 2, Disconnected drones: 1
+Received from drone 1: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863917, "location": { "x": 19, "y": 27 }, "status": "busy" }
+Received from drone 2: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863917, "location": { "x": 0, "y": 6 }, "status": "busy" }
+Drawing drones, list has 3 drones
+Drew 2 drones
+Stats: Active drones: 2, Disconnected drones: 1
+Drawing drones, list has 3 drones
+Drew 2 drones
+Stats: Active drones: 2, Disconnected drones: 1
+Drawing drones, list has 3 drones
+Drew 2 drones
+Stats: Active drones: 2, Disconnected drones: 1
+Received from drone 1: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863917, "location": { "x": 20, "y": 27 }, "status": "busy" }
+Received from drone 2: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863917, "location": { "x": 0, "y": 7 }, "status": "busy" }
+Drawing drones, list has 3 drones
+Drew 2 drones
+Stats: Active drones: 2, Disconnected drones: 1
+Drawing drones, list has 3 drones
+Drew 2 drones
+Stats: Active drones: 2, Disconnected drones: 1
+Drawing drones, list has 3 drones
+Drew 2 drones
+Stats: Active drones: 2, Disconnected drones: 1
+Received from drone 1: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863917, "location": { "x": 21, "y": 27 }, "status": "busy" }
+Received from drone 2: { "type": "STATUS_UPDATE", "drone_id": 0, "timestamp": 1747863917, "location": { "x": 0, "y": 8 }, "status": "busy" }
+Drawing drones, list has 3 drones
+Drew 2 drones
+Stats: Active drones: 2, Disconnected drones: 1
+Drawing drones, list has 3 drones
+Drew 2 drones
+Stats: Active drones: 2, Disconnected drones: 1
+Running cleanup_disconnected_drones()
+Drone 0 has been disconnected for 10.0 seconds
+Re
