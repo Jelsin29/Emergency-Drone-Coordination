@@ -76,6 +76,8 @@ void cleanup_survivors() {
  * @return NULL
  */
 void *survivor_generator(void *args) {
+    (void)args;  // Explicitly mark parameter as unused to suppress warning
+    
     // Wait a moment for the system to stabilize
     sleep(1);
     

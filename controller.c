@@ -17,6 +17,7 @@ List *drones = NULL;
 
 // Thread IDs for cleanup
 pthread_t survivor_thread;
+pthread_t drone_server_thread;
 pthread_t ai_thread;
 
 // Graceful shutdown flag
@@ -179,14 +180,21 @@ int main()
     draw_grid();
     SDL_RenderPresent(renderer);
 
-    // Initialize drones
-    initialize_drones();
-
-    // Start survivor generator thread
-    int result = pthread_create(&survivor_thread, NULL, survivor_generator, NULL);
+    // Start drone server thread
+    int result = pthread_create(&drone_server_thread, NULL, drone_server, NULL);
     if (result != 0)
     {
-        fprintf(stderr, "Error creating survivor thread: %d\n", result);
+        fprintf(stderr, "Error creating drone server thread: %d\n", result);
+        cleanup_resources();
+        cleanup_survivors();
+        return 1;
+    }
+
+    // Start survivor generator thread
+    int survivor_result = pthread_create(&survivor_thread, NULL, survivor_generator, NULL);
+    if (survivor_result != 0)
+    {
+        fprintf(stderr, "Error creating survivor thread: %d\n", survivor_result);
         cleanup_resources();
         cleanup_survivors();
         return 1;
@@ -222,7 +230,7 @@ int main()
         // Draw elements - grid, drones, and survivors
         draw_grid();
         draw_survivors();
-        draw_drones(); // Always draw drones regardless of drone_fleet
+        draw_drones();
 
         // Update simulation statistics (used by both controller and view)
         update_simulation_stats();

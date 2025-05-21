@@ -1,6 +1,7 @@
 #include <arpa/inet.h>
 #include "headers/drone.h"
 #include "headers/globals.h"
+#include "headers/map.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>
@@ -16,9 +17,11 @@
 Drone my_drone = {0};
 pthread_t thread_id;
 volatile int running = 1;
+int sock; // Global socket for both threads
+pthread_mutex_t sock_mutex = PTHREAD_MUTEX_INITIALIZER; // Add socket mutex
 
 void* drone_behavior(void *arg) {
-    int sock = *(int *)arg;
+    (void)arg; // Unused parameter
 
     while(running) {
         // Keep the lock for the minimum time possible
@@ -41,6 +44,32 @@ void* drone_behavior(void *arg) {
             if(new_pos.x != my_drone.coord.x || new_pos.y != my_drone.coord.y) {
                 // Update position
                 my_drone.coord = new_pos;
+                
+                // Send a STATUS_UPDATE message to the server
+                struct json_object *status_update = json_object_new_object();
+                json_object_object_add(status_update, "type", json_object_new_string("STATUS_UPDATE"));
+                json_object_object_add(status_update, "drone_id", json_object_new_int(my_drone.id));
+                json_object_object_add(status_update, "timestamp", json_object_new_int(time(NULL)));
+                
+                // Include current location
+                struct json_object *location = json_object_new_object();
+                json_object_object_add(location, "x", json_object_new_int(my_drone.coord.x));
+                json_object_object_add(location, "y", json_object_new_int(my_drone.coord.y));
+                json_object_object_add(status_update, "location", location);
+                
+                // Include current status
+                json_object_object_add(status_update, "status", json_object_new_string("busy"));
+                
+                // Send the update
+                const char *update_str = json_object_to_json_string(status_update);
+                pthread_mutex_lock(&sock_mutex);
+                send(sock, update_str, strlen(update_str), 0);
+                pthread_mutex_unlock(&sock_mutex);
+                
+                // Free the JSON object
+                json_object_put(status_update);
+                
+                printf("Status update sent: Position (%d, %d)\n", my_drone.coord.x, my_drone.coord.y);
             }
         }
 
@@ -55,7 +84,11 @@ void* drone_behavior(void *arg) {
             json_object_object_add(mission_complete, "details", json_object_new_string("Mission completed successfully."));
 
             const char *mission_complete_str = json_object_to_json_string(mission_complete);
+            
+            pthread_mutex_lock(&sock_mutex);
             send(sock, mission_complete_str, strlen(mission_complete_str), 0);
+            pthread_mutex_unlock(&sock_mutex);
+            
             json_object_put(mission_complete);
 
             // Reset the drone's status to IDLE
@@ -78,7 +111,6 @@ void* drone_behavior(void *arg) {
 
 int main()
 {
-    int sock;
     struct sockaddr_in server_addr;
     char buffer[BUFFER_SIZE];
 
@@ -144,7 +176,11 @@ int main()
 
     // Convert JSON object to string and send it
     const char *json_str = json_object_to_json_string(drone_info);
+    
+    pthread_mutex_lock(&sock_mutex);
     send(sock, json_str, strlen(json_str), 0);
+    pthread_mutex_unlock(&sock_mutex);
+    
     printf("Drone info sent: %s\n", json_str);
 
     // Free JSON object
@@ -174,14 +210,23 @@ int main()
         exit(EXIT_FAILURE);
     }
 
+
+    printf("Drone %d is ready for missions.\n", my_drone.id);
+
     // Start the drone behavior thread
-    int result = pthread_create(&thread_id, NULL, &drone_behavior, &sock);
+    int result = pthread_create(&thread_id, NULL, &drone_behavior, NULL);
     if (result != 0) {
         fprintf(stderr, "Error creating thread %s\n", strerror(result));
     }
 
+    printf("Starting main message loop...\n");
+    
     // Main loop to handle server messages
     while (running) {
+
+        printf("Waiting for messages from server...\n");
+        fflush(stdout); // Ensure the message is printed immediately
+
         bytes_received = recv(sock, buffer, BUFFER_SIZE - 1, 0);
         if (bytes_received > 0) {
             buffer[bytes_received] = '\0';
@@ -200,7 +245,11 @@ int main()
                     json_object_object_add(heartbeat_response, "drone_id", json_object_new_int(my_drone.id));
                     json_object_object_add(heartbeat_response, "timestamp", json_object_new_int(time(NULL)));
                     const char *response_str = json_object_to_json_string(heartbeat_response);
+                    
+                    pthread_mutex_lock(&sock_mutex);
                     send(sock, response_str, strlen(response_str), 0);
+                    pthread_mutex_unlock(&sock_mutex);
+                    
                     json_object_put(heartbeat_response);
                 } else if (strcmp(message_type, "ASSIGN_MISSION") == 0) {
                     // Handle mission assignment

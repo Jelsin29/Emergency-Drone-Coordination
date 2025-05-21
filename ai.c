@@ -6,6 +6,8 @@
 #include <time.h>
 #include <string.h>
 #include <pthread.h>
+#include <json-c/json.h>  // Add this include for json_object_put and other JSON functions
+#include <sys/socket.h>  // Add this for socket functions like send()
 
 /**
  * Calculate Manhattan distance between two coordinates
@@ -48,6 +50,47 @@ void assign_mission(Drone *drone, int survivor_index) {
         time_t t;
         time(&t);
         localtime_r(&t, &drone->last_update);
+        
+        // Check if this is a networked drone client
+        if (drone->socket > 0) {
+            // Create a mission assignment message according to the protocol
+            struct json_object *mission = json_object_new_object();
+            json_object_object_add(mission, "type", json_object_new_string("ASSIGN_MISSION"));
+            
+            // Generate a unique mission ID
+            char mission_id[16];
+            snprintf(mission_id, sizeof(mission_id), "M%d", survivor_index);
+            json_object_object_add(mission, "mission_id", json_object_new_string(mission_id));
+            
+            // Set priority (based on distance or other factors)
+            json_object_object_add(mission, "priority", json_object_new_string("high"));
+            
+            // Target coordinates
+            struct json_object *target = json_object_new_object();
+            json_object_object_add(target, "x", json_object_new_int(drone->target.x));
+            json_object_object_add(target, "y", json_object_new_int(drone->target.y));
+            json_object_object_add(mission, "target", target);
+            
+            // Set expiry time (one hour from now)
+            json_object_object_add(mission, "expiry", json_object_new_int(time(NULL) + 3600));
+            
+            // Send the mission to the drone client
+            const char *mission_str = json_object_to_json_string(mission);
+            ssize_t bytes_sent = send(drone->socket, mission_str, strlen(mission_str), 0);
+            
+            if (bytes_sent < 0) {
+                perror("Failed to send mission assignment");
+            } else {
+                printf("Mission %s assigned to drone %d: Target (%d, %d)\n", 
+                      mission_id, drone->id, drone->target.x, drone->target.y);
+            }
+            
+            // Free the JSON object
+            json_object_put(mission);
+        } else {
+            printf("Simulated mission assigned to drone %d: Target (%d, %d)\n", 
+                  drone->id, drone->target.x, drone->target.y);
+        }
     }
     
     // Unlock mutexes

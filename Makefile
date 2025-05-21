@@ -12,6 +12,9 @@ else
     $(error Unsupported operating system)
 endif
 
+# JSON library flags
+JSON_FLAGS = -ljson-c
+
 # Source files
 SRC = controller.c list.c map.c drone.c survivor.c ai.c view.c
 OBJ = $(SRC:.c=.o)
@@ -27,12 +30,15 @@ MAIN = drone_simulator
 LIST_TEST = tests/listtest
 SDL_TEST = tests/sdltest
 
+# Client drone executable
+CLIENT_DRONE = drone_client
+
 # Default target
-all: $(MAIN) $(LIST_TEST) $(SDL_TEST)
+all: $(MAIN) $(LIST_TEST) $(SDL_TEST) $(CLIENT_DRONE)
 
 # Main program
 $(MAIN): $(OBJ)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(SDL_FLAGS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(SDL_FLAGS) $(JSON_FLAGS)
 
 # Build object files
 %.o: %.c
@@ -45,6 +51,10 @@ $(LIST_TEST): tests/listtest.o list.o
 $(SDL_TEST): tests/sdltest.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(SDL_FLAGS)
 
+# Client drone program
+$(CLIENT_DRONE): clientDrone.o map.o list.o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(JSON_FLAGS)
+
 # Run the simulator
 run: $(MAIN)
 	./$(MAIN)
@@ -56,6 +66,10 @@ test_list: $(LIST_TEST)
 # Run SDL test
 test_sdl: $(SDL_TEST)
 	./$(SDL_TEST)
+
+# Run the client drone
+run_client: $(CLIENT_DRONE)
+	./$(CLIENT_DRONE)
 
 # Run Valgrind on main program
 valgrind_main: $(MAIN)
@@ -74,7 +88,7 @@ valgrind_all: valgrind_main valgrind_list valgrind_sdl
 
 # Clean up
 clean:
-	rm -f $(MAIN) $(OBJ) $(LIST_TEST) $(SDL_TEST) tests/*.o
+	rm -f $(MAIN) $(OBJ) $(LIST_TEST) $(SDL_TEST) $(CLIENT_DRONE) clientDrone.o tests/*.o
 
 # Dependencies
 controller.o: controller.c headers/globals.h headers/map.h headers/drone.h headers/survivor.h headers/ai.h headers/list.h headers/view.h
@@ -86,5 +100,6 @@ ai.o: ai.c headers/ai.h headers/drone.h headers/survivor.h
 view.o: view.c headers/view.h headers/drone.h headers/map.h headers/survivor.h
 tests/listtest.o: tests/listtest.c headers/list.h headers/survivor.h
 tests/sdltest.o: tests/sdltest.c
+clientDrone.o: clientDrone.c headers/drone.h headers/globals.h headers/map.h
 
-.PHONY: all clean run test_list test_sdl valgrind_main valgrind_list valgrind_sdl valgrind_all
+.PHONY: all clean run test_list test_sdl run_client valgrind_main valgrind_list valgrind_sdl valgrind_all

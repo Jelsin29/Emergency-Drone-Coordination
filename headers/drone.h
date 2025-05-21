@@ -21,6 +21,7 @@ typedef struct drone {
     Coord target;
     struct tm last_update;
     pthread_mutex_t lock;   // Per-drone mutex
+    int socket;             // Socket for client communication
 } Drone;
 
 // Global drone list (extern)
@@ -28,8 +29,9 @@ extern List *drones;
 extern int num_drones;    // Number of drones in the fleet
 
 // Functions
+void* drone_server(void *arg);
+void *handle_drone_client(void *arg);
 void initialize_drones();
-void* drone_behavior(void *arg);
 void cleanup_drones();
 
 #endif
