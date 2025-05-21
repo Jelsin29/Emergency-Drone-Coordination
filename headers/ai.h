@@ -8,6 +8,6 @@
 void* ai_controller(void *args);
 void assign_mission(Drone *drone, int survivor_index);
 int calculate_distance(Coord a, Coord b);
-int find_closest_idle_drone(int survivor_index);
+Drone*  find_closest_idle_drone(int survivor_index);
 
 #endif

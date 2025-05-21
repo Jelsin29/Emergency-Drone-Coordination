@@ -72,18 +72,6 @@ void initialize_lists()
  */
 void cleanup_resources()
 {
-    // Cancel threads
-    if (drone_fleet != NULL)
-    {
-        for (int i = 0; i < num_drones; i++)
-        {
-            pthread_cancel(drone_fleet[i].thread_id);
-            pthread_mutex_destroy(&drone_fleet[i].lock);
-        }
-        free(drone_fleet);
-        drone_fleet = NULL;
-    }
-
     // Free map resources
     freemap();
 
@@ -131,20 +119,29 @@ void update_simulation_stats()
     }
     pthread_mutex_unlock(&survivors_mutex);
     
-    // Count drones by status
-    for (int i = 0; i < num_drones; i++)
-    {
-        pthread_mutex_lock(&drone_fleet[i].lock);
-        if (drone_fleet[i].status == IDLE)
-        {
+    // Count drones by status from the list
+    pthread_mutex_lock(&drones->lock);
+    
+    // Iterate through all drones in the list
+    Node* current = drones->head;
+    while (current != NULL) {
+        Drone* d = (Drone*)current->data;
+        
+        // Lock this specific drone to check its status
+        pthread_mutex_lock(&d->lock);
+        
+        if (d->status == IDLE) {
             idle_drones++;
         }
-        else if (drone_fleet[i].status == ON_MISSION)
-        {
+        else if (d->status == ON_MISSION) {
             mission_drones++;
         }
-        pthread_mutex_unlock(&drone_fleet[i].lock);
+        
+        pthread_mutex_unlock(&d->lock);
+        current = current->next;
     }
+    
+    pthread_mutex_unlock(&drones->lock);
 }
 
 /**
@@ -225,11 +222,7 @@ int main()
         // Draw elements - grid, drones, and survivors
         draw_grid();
         draw_survivors();
-
-        if (drone_fleet != NULL)
-        {
-            draw_drones();
-        }
+        draw_drones(); // Always draw drones regardless of drone_fleet
 
         // Update simulation statistics (used by both controller and view)
         update_simulation_stats();

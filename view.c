@@ -413,32 +413,39 @@ void draw_cell(int x, int y, SDL_Color color) {
  * Also draws lines between drones and their targets when on mission
  */
 void draw_drones() {
-    if (drone_fleet == NULL) {
-        return;
-    }
+    // Lock the drones list for iteration
+    pthread_mutex_lock(&drones->lock);
     
-    for (int i = 0; i < num_drones; i++) {
-        pthread_mutex_lock(&drone_fleet[i].lock);
+    // Iterate through all drones in the list
+    Node* current = drones->head;
+    while (current != NULL) {
+        Drone* d = (Drone*)current->data;
+        
+        // Lock this specific drone while drawing it
+        pthread_mutex_lock(&d->lock);
         
         // Choose color based on drone status
-        SDL_Color color = (drone_fleet[i].status == IDLE) ? BLUE : GREEN;
+        SDL_Color color = (d->status == IDLE) ? BLUE : GREEN;
         
         // Draw the drone
-        draw_cell(drone_fleet[i].coord.x, drone_fleet[i].coord.y, color);
+        draw_cell(d->coord.x, d->coord.y, color);
         
         // Draw mission line if on mission
-        if (drone_fleet[i].status == ON_MISSION) {
+        if (d->status == ON_MISSION) {
             SDL_SetRenderDrawColor(renderer, GREEN.r, GREEN.g, GREEN.b, GREEN.a);
             SDL_RenderDrawLine(
                 renderer,
-                drone_fleet[i].coord.y * CELL_SIZE + CELL_SIZE / 2,
-                drone_fleet[i].coord.x * CELL_SIZE + CELL_SIZE / 2,
-                drone_fleet[i].target.y * CELL_SIZE + CELL_SIZE / 2,
-                drone_fleet[i].target.x * CELL_SIZE + CELL_SIZE / 2);
+                d->coord.y * CELL_SIZE + CELL_SIZE / 2,
+                d->coord.x * CELL_SIZE + CELL_SIZE / 2,
+                d->target.y * CELL_SIZE + CELL_SIZE / 2,
+                d->target.x * CELL_SIZE + CELL_SIZE / 2);
         }
         
-        pthread_mutex_unlock(&drone_fleet[i].lock);
+        pthread_mutex_unlock(&d->lock);
+        current = current->next;
     }
+    
+    pthread_mutex_unlock(&drones->lock);
 }
 
 /**

@@ -25,12 +25,11 @@ typedef struct drone {
 
 // Global drone list (extern)
 extern List *drones;
-extern Drone *drone_fleet; // Array of drones
 extern int num_drones;    // Number of drones in the fleet
 
 // Functions
 void initialize_drones();
 void* drone_behavior(void *arg);
-void cleanup_drones();  // Add this declaration
+void cleanup_drones();
 
 #endif

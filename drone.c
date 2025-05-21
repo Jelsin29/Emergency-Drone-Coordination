@@ -7,8 +7,6 @@
 #include <string.h>
 #include <time.h>
 
-// Global drone fleet
-Drone *drone_fleet = NULL;
 int num_drones = 20; // Default fleet size
 
 /**
@@ -16,36 +14,42 @@ int num_drones = 20; // Default fleet size
  * Creates drone objects and starts their threads
  */
 void initialize_drones() {
-    // Allocate memory for drone fleet
-    drone_fleet = malloc(sizeof(Drone) * num_drones);
-    if (!drone_fleet) {
-        perror("Failed to allocate drone fleet");
-        exit(EXIT_FAILURE);
-    }
-    
     // Seed random number generator
     srand(time(NULL));
 
-    // Initialize each drone
+    // Initialize each drone and add it to the list
     for(int i = 0; i < num_drones; i++) {
+        // Create a temporary drone object
+        Drone drone;
+        
         // Set basic properties
-        drone_fleet[i].id = i;
-        drone_fleet[i].status = IDLE;
+        drone.id = i;
+        drone.status = IDLE;
         
         // Random starting position within map boundaries
-        drone_fleet[i].coord.x = rand() % map.height;
-        drone_fleet[i].coord.y = rand() % map.width;
+        drone.coord.x = rand() % map.height;
+        drone.coord.y = rand() % map.width;
         
         // Initial target is current position
-        drone_fleet[i].target = drone_fleet[i].coord;
+        drone.target = drone.coord;
         
         // Initialize mutex
-        pthread_mutex_init(&drone_fleet[i].lock, NULL);
-    }
-    
-    // Start threads
-    for(int i = 0; i < num_drones; i++) {
-        int result = pthread_create(&drone_fleet[i].thread_id, NULL, drone_behavior, &drone_fleet[i]);
+        pthread_mutex_init(&drone.lock, NULL);
+        
+        // Add the drone to the list - this copies the drone data into the list's memory
+        // The add function handles its own locking
+        Node *node = drones->add(drones, &drone);
+        
+        if (!node) {
+            fprintf(stderr, "Failed to add drone %d to list\n", i);
+            continue;
+        }
+        
+        // Get a pointer to the actual drone in the list
+        Drone *d = (Drone*)node->data;
+        
+        // Create thread for this drone
+        int result = pthread_create(&d->thread_id, NULL, drone_behavior, d);
         if (result != 0) {
             fprintf(stderr, "Error creating thread for drone %d: %s\n", 
                    i, strerror(result));
@@ -115,19 +119,27 @@ void* drone_behavior(void *arg) {
  * Cancels threads, destroys mutexes, and frees memory
  */
 void cleanup_drones() {
-    if (!drone_fleet) {
-        return; // Nothing to clean up
-    }
+    // Traverse the list and clean up each drone
+    // Note: We don't lock the list here since we're only reading
+    //       and any modifications to the list should be done through
+    //       the list's thread-safe interface
+    Node *current = drones->head;
     
-    for(int i = 0; i < num_drones; i++) {
-        // Cancel thread
-        pthread_cancel(drone_fleet[i].thread_id);
+    while (current != NULL) {
+        Drone *d = (Drone*)current->data;
         
-        // Cleanup mutex
-        pthread_mutex_destroy(&drone_fleet[i].lock);
+        // Cancel the drone's thread
+        pthread_cancel(d->thread_id);
+        
+        // Destroy the drone's mutex - must be careful with this!
+        // Lock it first to ensure no other thread is using it
+        pthread_mutex_lock(&d->lock);
+        pthread_mutex_unlock(&d->lock);
+        pthread_mutex_destroy(&d->lock);
+        
+        // Move to the next node
+        current = current->next;
     }
     
-    // Free memory
-    free(drone_fleet);
-    drone_fleet = NULL;
+    // Drones list itself will be destroyed in controller.c cleanup_resources()
 }
