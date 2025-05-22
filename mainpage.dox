@@ -352,9 +352,9 @@
  * @section authors_acknowledgments Authors & Acknowledgments
  * 
  * ### Development Team
- * - **Amar Daskin** - System Architecture, AI Algorithms, Performance Optimization
- * - **Wilmer Cuevas** - Network Communication, Threading, Protocol Implementation  
- * - **Jelsin Sanchez** - Visualization System, Data Structures, Testing Framework
+ * - **Amar Daskin** - Teacher 
+ * - **Wilmer Cuevas** - Network Communication, Threading, Protocol Implementation, AI Algorithms  
+ * - **Jelsin Sanchez** - Visualization System, Data Structures, Testing Framework, Performance Optimization
  * 
  * ### Special Thanks
  * - Emergency Response Research Community
@@ -376,7 +376,7 @@
  * @section version_history Version History & Changelog
  * 
  * ### Version 1.0 (Current)
- * **Release Date**: 2024-05-22
+ * **Release Date**: 2025-05-22
  * - ✅ Complete multi-threaded architecture implementation
  * - ✅ Real-time SDL2 visualization with statistics panel
  * - ✅ Robust TCP/IP networking with JSON protocol
@@ -388,7 +388,7 @@
  * - ✅ Professional documentation with Doxygen
  * 
  * ### Version 0.1 (Initial Implementation)
- * **Release Date**: 2024-05-19
+ * **Release Date**: 2025-05-22
  * - Basic multi-threaded architecture
  * - Initial AI mission assignment algorithms
  * - SDL-based visualization prototype
