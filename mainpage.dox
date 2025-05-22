@@ -50,6 +50,36 @@
  * | **Survivor Generator** | 1 | Continuous emergency simulation | 1 survivor/0.5-1.5 sec |
  * | **Performance Monitor** | 1 | Metrics collection and logging | 5-second intervals |
  * 
+ * @subsection synchronization_strategy Synchronization Strategy
+ * 
+ * The system implements a comprehensive synchronization approach to ensure thread safety and prevent race conditions:
+ * 
+ * #### Mutex-Based Protection
+ * | Resource Type | Protection Mechanism | Scope | Access Pattern |
+ * |--------------|---------------------|-------|----------------|
+ * | **Lists** | Per-list mutex | Structure-wide | Lock during operations (add, remove, pop) |
+ * | **Drones** | Per-drone mutex | Entity-specific | Lock during state changes |
+ * | **Survivors** | Global survivor mutex | Collection-wide | Lock during array modifications |
+ * | **Map Cells** | Per-cell list mutex | Cell-specific | Lock during spatial queries |
+ * | **Metrics** | Metrics mutex | Module-wide | Lock during performance updates |
+ * 
+ * #### Semaphore Flow Control
+ * - **List capacity management**: Semaphores prevent overflow/underflow conditions
+ * - **items_sem**: Counts available items for pop operations
+ * - **spaces_sem**: Counts available spaces for add operations
+ * 
+ * #### Deadlock Prevention
+ * The system enforces a strict locking hierarchy to prevent deadlocks:
+ * 1. Always acquire collection locks before individual entity locks
+ * 2. Lock drones in ascending ID order when multiple are needed
+ * 3. Acquire survivors_mutex before any drone-specific mutexes
+ * 
+ * #### Performance Optimizations
+ * - **Fine-grained locking**: Minimize critical section size
+ * - **Contiguous allocation**: Improve cache efficiency
+ * - **Free list management**: Reduce allocation overhead
+ * - **Lock-free reads**: Where appropriate for visualization
+ * 
  * @subsection communication_protocol Communication Protocol
  * 
  * **JSON-based messaging protocol** ensures reliable communication between server and drone clients:
