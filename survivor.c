@@ -143,7 +143,7 @@ void *survivor_generator(void *args) {
             // Move to next array slot
             num_survivors++;
         } else {
-            printf("Survivor array is full, recycling survivors...\n");
+            //printf("Survivor array is full, recycling survivors...\n");
             // If the array is full, recycle some rescued survivors to make space
             int recycled = 0;
             for (int i = 0; i < num_survivors && recycled < 5; i++) {

@@ -279,7 +279,7 @@ int main()
         fprintf(stderr, "Error creating thread %s\n", strerror(result));
     }
 
-    printf("Starting main message loop...\n");
+    //printf("Starting main message loop...\n");
     
     // Main loop to handle server messages
     while (running) {
