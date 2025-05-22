@@ -1,3 +1,47 @@
+/**
+ * @file server_throughput.c
+ * @brief Performance monitoring system implementation for drone coordination server
+ * @author Amar Daskin - Wilmer Cuevas - Jelsin Sanchez
+ * @version 0.1
+ * @date 2025-05-22
+ * 
+ * This module implements a comprehensive performance monitoring system that
+ * tracks all aspects of server operation including message throughput,
+ * response times, connection statistics, and system performance metrics.
+ * It provides real-time monitoring with multiple output formats for analysis.
+ * 
+ * **Monitoring Capabilities:**
+ * - Real-time message throughput tracking (messages per second)
+ * - Response time analysis with min/max/average calculations
+ * - Connection lifecycle monitoring (connects, disconnects, peak)
+ * - Data transfer volume tracking (bytes sent/received)
+ * - Error rate monitoring and peak performance detection
+ * - Multi-threaded data collection with atomic operations
+ * 
+ * **Output Formats:**
+ * - Real-time console output with formatted statistics
+ * - CSV logging for historical analysis and trending
+ * - JSON export for integration with external tools
+ * - Configurable logging intervals and detail levels
+ * 
+ * **Thread Safety:**
+ * - Mutex-protected metrics structure for concurrent access
+ * - Atomic counter updates from multiple threads
+ * - Background monitoring thread for continuous logging
+ * - Safe initialization and cleanup procedures
+ * 
+ * **Performance Impact:**
+ * - Minimal overhead through efficient data structures
+ * - Lock-free increments where possible
+ * - Background logging to avoid blocking main operations
+ * - Configurable monitoring granularity
+ * 
+ * @copyright Copyright (c) 2024
+ * 
+ * @ingroup monitoring
+ * @ingroup core_modules
+ */
+
 #define _POSIX_C_SOURCE 199309L
 #include "headers/server_throughput.h"
 
@@ -5,7 +49,11 @@
 PerfMetrics metrics = {0};
 
 /**
- * Initialize performance monitoring with optional log file
+ * @brief Initialize performance monitoring with optional log file
+ * 
+ * Sets up the metrics structure and creates a CSV log file if a filename is provided
+ * 
+ * @param log_filename Path to CSV log file (can be NULL for no logging)
  */
 void init_perf_monitor(const char* log_filename) {
     pthread_mutex_init(&metrics.metrics_lock, NULL);
@@ -25,7 +73,11 @@ void init_perf_monitor(const char* log_filename) {
 }
 
 /**
- * Increment status update count with byte tracking
+ * @brief Increment status update count with byte tracking
+ * 
+ * Thread-safe function to record a status update from a drone
+ * 
+ * @param bytes_received Size of the received message in bytes
  */
 void perf_record_status_update(size_t bytes_received) {
     pthread_mutex_lock(&metrics.metrics_lock);
@@ -36,7 +88,11 @@ void perf_record_status_update(size_t bytes_received) {
 }
 
 /**
- * Increment mission assignment count with byte tracking
+ * @brief Increment mission assignment count with byte tracking
+ * 
+ * Thread-safe function to record a mission assignment to a drone
+ * 
+ * @param bytes_sent Size of the sent message in bytes
  */
 void perf_record_mission_assigned(size_t bytes_sent) {
     pthread_mutex_lock(&metrics.metrics_lock);
@@ -47,7 +103,11 @@ void perf_record_mission_assigned(size_t bytes_sent) {
 }
 
 /**
- * Increment heartbeat count with byte tracking
+ * @brief Increment heartbeat count with byte tracking
+ * 
+ * Thread-safe function to record a heartbeat sent to a drone
+ * 
+ * @param bytes_sent Size of the sent message in bytes
  */
 void perf_record_heartbeat(size_t bytes_sent) {
     pthread_mutex_lock(&metrics.metrics_lock);
@@ -58,7 +118,9 @@ void perf_record_heartbeat(size_t bytes_sent) {
 }
 
 /**
- * Record error occurrences
+ * @brief Record error occurrences
+ * 
+ * Thread-safe function to increment the error counter
  */
 void perf_record_error(void) {
     pthread_mutex_lock(&metrics.metrics_lock);
@@ -67,7 +129,11 @@ void perf_record_error(void) {
 }
 
 /**
- * Record connection events
+ * @brief Record connection events
+ * 
+ * Thread-safe function to track drone connections and disconnections
+ * 
+ * @param is_new 1 for new connection, 0 for disconnection
  */
 void perf_record_connection(int is_new) {
     pthread_mutex_lock(&metrics.metrics_lock);
@@ -87,7 +153,11 @@ void perf_record_connection(int is_new) {
 }
 
 /**
- * Record response time for latency tracking
+ * @brief Record response time for latency tracking
+ * 
+ * Thread-safe function to track message response times
+ * 
+ * @param response_time_ms Response time in milliseconds
  */
 void perf_record_response_time(double response_time_ms) {
     pthread_mutex_lock(&metrics.metrics_lock);
@@ -104,7 +174,9 @@ void perf_record_response_time(double response_time_ms) {
 }
 
 /**
- * Get elapsed time in seconds since monitoring started
+ * @brief Get elapsed time in seconds since monitoring started
+ * 
+ * @return Elapsed time in seconds as a double
  */
 double get_elapsed_seconds(void) {
     struct timespec now;
@@ -114,7 +186,9 @@ double get_elapsed_seconds(void) {
 }
 
 /**
- * Log performance metrics to console
+ * @brief Log performance metrics to console
+ * 
+ * Displays a formatted summary of all current performance metrics
  */
 void log_perf_metrics(void) {
     pthread_mutex_lock(&metrics.metrics_lock);
@@ -163,7 +237,9 @@ void log_perf_metrics(void) {
 }
 
 /**
- * Log performance metrics to CSV file
+ * @brief Log performance metrics to CSV file
+ * 
+ * Appends a line with current metrics to the CSV log file if one is open
  */
 void log_perf_metrics_to_file(void) {
     if (!metrics.log_file) return;
@@ -192,7 +268,12 @@ void log_perf_metrics_to_file(void) {
 }
 
 /**
- * Performance monitor thread function
+ * @brief Performance monitor thread function
+ * 
+ * Periodically logs metrics to both console and CSV file
+ * 
+ * @param arg Unused thread parameter
+ * @return NULL when thread terminates
  */
 void* perf_monitor_thread(void* arg) {
     (void)arg; // Suppress unused parameter warning
@@ -206,7 +287,12 @@ void* perf_monitor_thread(void* arg) {
 }
 
 /**
- * Start the performance monitor in a separate thread
+ * @brief Start the performance monitor in a separate thread
+ * 
+ * Initializes the metrics system and starts a background thread for logging
+ * 
+ * @param log_filename Path to CSV log file (can be NULL for no logging)
+ * @return Thread ID of the monitor thread, or 0 on failure
  */
 pthread_t start_perf_monitor(const char* log_filename) {
     pthread_t monitor_thread;
@@ -224,7 +310,11 @@ pthread_t start_perf_monitor(const char* log_filename) {
 }
 
 /**
- * Stop performance monitoring and log final metrics
+ * @brief Stop performance monitoring and log final metrics
+ * 
+ * Terminates the monitor thread and outputs final statistics
+ * 
+ * @param monitor_thread Thread ID of the monitor thread
  */
 void stop_perf_monitor(pthread_t monitor_thread) {
     if (monitor_thread == 0) return;
@@ -244,7 +334,11 @@ void stop_perf_monitor(pthread_t monitor_thread) {
 }
 
 /**
- * Export metrics to JSON format for external analysis
+ * @brief Export metrics to JSON format for external analysis
+ * 
+ * Creates a JSON file with all current metrics for easier processing
+ * 
+ * @param filename Path to output JSON file
  */
 void export_metrics_json(const char* filename) {
     if (!filename) return;

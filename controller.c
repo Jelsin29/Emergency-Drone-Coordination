@@ -1,3 +1,47 @@
+/**
+ * @file controller.c
+ * @brief Main system controller and coordination hub for emergency drone system
+ * @author Amar Daskin - Wilmer Cuevas - Jelsin Sanchez
+ * @version 0.1
+ * @date 2025-05-22
+ * 
+ * This module serves as the central coordination hub for the entire emergency
+ * drone coordination system. It initializes all subsystems, manages the main
+ * simulation loop, coordinates between different components, and provides
+ * system-wide statistics and monitoring.
+ * 
+ * **System Architecture:**
+ * - Multi-threaded architecture with dedicated threads for each subsystem
+ * - Real-time SDL-based visualization with interactive display
+ * - TCP/IP server for drone client connections
+ * - Continuous survivor generation for realistic emergency simulation
+ * - AI-driven mission assignment and optimization
+ * 
+ * **Thread Management:**
+ * - Main thread: SDL rendering and event processing (10 FPS)
+ * - Drone server thread: Network connection handling
+ * - Survivor generator thread: Continuous emergency simulation
+ * - AI controller thread: Mission assignment and optimization
+ * - Performance monitor thread: Metrics collection and logging
+ * 
+ * **Performance Monitoring:**
+ * - Real-time throughput tracking with CSV logging
+ * - Comprehensive metrics export in JSON format
+ * - Frame-based statistics updates for visualization
+ * - Graceful shutdown with final performance reports
+ * 
+ * **System Lifecycle:**
+ * 1. Initialize all subsystems (lists, map, SDL, networking)
+ * 2. Start all service threads (server, AI, survivor generation)
+ * 3. Run main simulation loop with real-time visualization
+ * 4. Handle graceful shutdown with proper resource cleanup
+ * 
+ * @copyright Copyright (c) 2024
+ * 
+ * @ingroup core_modules
+ * @ingroup main_controller
+ */
+
 #include "headers/globals.h"
 #include "headers/map.h"
 #include "headers/drone.h"

@@ -1,3 +1,47 @@
+/**
+ * @file drone.c
+ * @brief Server-side drone management and network communication implementation
+ * @author Amar Daskin - Wilmer Cuevas - Jelsin Sanchez
+ * @version 0.1
+ * @date 2025-05-22
+ * 
+ * This module implements the server-side drone management system including
+ * TCP/IP network communication, client connection handling, and drone
+ * lifecycle management. It provides the communication bridge between the
+ * coordination server and autonomous drone clients.
+ * 
+ * **Network Architecture:**
+ * - Multi-threaded TCP server with concurrent client handling
+ * - JSON-based communication protocol for all message types
+ * - Per-client connection threads with dedicated message processing
+ * - Automatic client registration and connection management
+ * - Graceful handling of connection failures and timeouts
+ * 
+ * **Message Processing:**
+ * - HANDSHAKE: Client registration and configuration exchange
+ * - STATUS_UPDATE: Real-time position and status information
+ * - MISSION_COMPLETE: Rescue completion notifications
+ * - HEARTBEAT_RESPONSE: Connection keep-alive management
+ * 
+ * **Drone Lifecycle:**
+ * - Connection establishment and handshake negotiation
+ * - Registration in global drone list with unique ID assignment
+ * - Continuous message processing and status synchronization
+ * - Mission assignment forwarding to clients
+ * - Cleanup and removal on disconnection
+ * 
+ * **Thread Safety:**
+ * - Per-drone mutex protection for status updates
+ * - Global drone list synchronization for concurrent access
+ * - Survivor array coordination for mission completion
+ * - Performance metrics integration with atomic operations
+ * 
+ * @copyright Copyright (c) 2024
+ * 
+ * @ingroup networking
+ * @ingroup core_modules
+ */
+
 #define _POSIX_C_SOURCE 199309L
 #include "headers/drone.h"
 #include "headers/globals.h"
@@ -13,9 +57,21 @@
 #include <json-c/json.h>
 #include <netinet/in.h>
 
-int num_drones = 20; // Default fleet size
+/** @brief Default fleet size */
+int num_drones = 20;
+
+/** @brief Server port for drone communication */
 #define SERVER_PORT 8080
 
+/**
+ * @brief Server thread function to listen for drone connections
+ * 
+ * Creates a socket server that listens for incoming drone client connections
+ * and launches a new thread for each connected drone
+ * 
+ * @param arg Unused thread parameter
+ * @return NULL when thread terminates
+ */
 void *drone_server(void *arg)
 {
     (void)arg;
@@ -110,9 +166,13 @@ void *drone_server(void *arg)
 }
 
 /**
- * Handle communication with a connected drone client
+ * @brief Handle communication with a connected drone client
+ * 
+ * Processes messages from a drone client, including handshake, status
+ * updates, mission completions, and heartbeats
+ * 
  * @param arg Pointer to socket descriptor
- * @return NULL
+ * @return NULL when thread terminates
  */
 void *handle_drone_client(void *arg)
 {
@@ -458,6 +518,14 @@ void *handle_drone_client(void *arg)
     return NULL;
 }
 
+/**
+ * @brief Update drone status after mission completion
+ * 
+ * Updates the status of a survivor after being rescued by a drone
+ * 
+ * @param drone Pointer to drone that completed a mission
+ * @param target Coordinates of the completed mission target
+ */
 void update_drone_status(Drone *drone, Coord *target)
 {
     if (!drone || !target)
@@ -506,7 +574,8 @@ void update_drone_status(Drone *drone, Coord *target)
 }
 
 /**
- * Clean up drone resources
+ * @brief Clean up drone resources
+ * 
  * Cancels threads, destroys mutexes, and frees memory
  */
 void cleanup_drones()

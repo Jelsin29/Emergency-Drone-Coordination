@@ -1,3 +1,49 @@
+/**
+ * @file view.c
+ * @brief SDL-based real-time visualization system for drone coordination display
+ * @author Amar Daskin - Wilmer Cuevas - Jelsin Sanchez
+ * @version 0.1
+ * @date 2025-05-22
+ * 
+ * This module implements the complete visualization system for the emergency
+ * drone coordination application using SDL2 graphics library. It provides
+ * real-time display of system state, interactive monitoring, and comprehensive
+ * information panels for system operators.
+ * 
+ * **Visual Components:**
+ * - Real-time map display with color-coded entities
+ * - Grid-based layout showing drone and survivor positions
+ * - Mission path visualization with dynamic line drawing
+ * - Comprehensive information panel with live statistics
+ * - Interactive window with event handling capabilities
+ * 
+ * **Color Coding System:**
+ * - Red: Survivors awaiting rescue or being helped
+ * - Blue: Idle drones available for mission assignment
+ * - Green: Active drones on rescue missions
+ * - Green lines: Mission paths from drones to targets
+ * - White: Grid lines and text for clarity
+ * 
+ * **Information Display:**
+ * - Real-time survivor counts by status (waiting, helped, rescued)
+ * - Drone status breakdown (idle, on mission, total count)
+ * - Visual legend explaining color coding system
+ * - Dynamic window title with key statistics
+ * - Performance-optimized rendering at 10 FPS
+ * 
+ * **Technical Features:**
+ * - SDL2 hardware-accelerated rendering
+ * - TTF font support with multiple fallback options
+ * - Thread-safe data access with proper synchronization
+ * - Scalable display system based on map dimensions
+ * - Efficient redraw cycles with minimal overhead
+ * 
+ * @copyright Copyright (c) 2024
+ * 
+ * @ingroup visualization
+ * @ingroup core_modules
+ */
+
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <stdio.h>
@@ -9,11 +55,20 @@
 #include "headers/survivor.h"
 #include "headers/globals.h"
 
-#define CELL_SIZE 20     // Pixels per map cell
-#define PANEL_WIDTH 200  // Width of the right info panel
-#define TEXT_HEIGHT 35   // Height for each line of text
-#define FONT_SIZE 16     // Default font size
-#define BOLD_FONT_SIZE 9 // Bold font size
+/** @brief Pixels per map cell */
+#define CELL_SIZE 20
+
+/** @brief Width of the right info panel */
+#define PANEL_WIDTH 200
+
+/** @brief Height for each line of text */
+#define TEXT_HEIGHT 35
+
+/** @brief Default font size */
+#define FONT_SIZE 16
+
+/** @brief Bold font size */
+#define BOLD_FONT_SIZE 9
 
 // SDL globals
 SDL_Window *window = NULL;
@@ -43,7 +98,10 @@ extern int idle_drones;
 extern int mission_drones;
 
 /**
- * Initialize SDL window and renderer based on map dimensions plus info panel
+ * @brief Initialize SDL window and renderer based on map dimensions plus info panel
+ * 
+ * Creates the main simulation window and loads fonts for text rendering
+ * 
  * @return 0 on success, 1 on failure
  */
 int init_sdl_window()
@@ -132,7 +190,10 @@ int init_sdl_window()
 }
 
 /**
- * Render text with SDL_ttf
+ * @brief Render text with SDL_ttf
+ * 
+ * Draws text on the screen at the specified position and color
+ * 
  * @param text Text to render
  * @param x X position on screen
  * @param y Y position on screen
@@ -180,10 +241,13 @@ void render_text(const char *text, int x, int y, SDL_Color color, bool use_bold)
 }
 
 /**
- * Render a text line in the info panel with a label and value
+ * @brief Render a text line in the info panel with a label and value
+ * 
+ * Creates a standardized text line with background and value display
+ * 
  * @param text Text label to render
  * @param y Y position in the panel
- * @param color Color for the label
+ * @param color Color for the label indicator
  * @param value Numeric value to display
  */
 void render_text_line(const char *text, int y, SDL_Color color, int value)
@@ -224,7 +288,9 @@ void render_text_line(const char *text, int y, SDL_Color color, int value)
 }
 
 /**
- * Update the window title with current statistics
+ * @brief Update the window title with current statistics
+ * 
+ * Shows system statistics in the window title bar
  */
 void update_window_title()
 {
@@ -237,7 +303,9 @@ void update_window_title()
 }
 
 /**
- * Draw the info panel on the right side of the window
+ * @brief Draw the info panel on the right side of the window
+ * 
+ * Creates a detailed panel showing statistics and a legend
  */
 void draw_info_panel()
 {
@@ -390,7 +458,10 @@ void draw_info_panel()
 }
 
 /**
- * Draw a colored cell at the specified map coordinates
+ * @brief Draw a colored cell at the specified map coordinates
+ * 
+ * Fills a single grid cell with the specified color
+ * 
  * @param x Map x-coordinate
  * @param y Map y-coordinate
  * @param color Color to fill the cell with
@@ -419,8 +490,9 @@ void draw_cell(int x, int y, SDL_Color color)
 }
 
 /**
- * Draw all drones with colors indicating their status
- * Blue = IDLE, Green = ON_MISSION
+ * @brief Draw all drones with colors indicating their status
+ * 
+ * Blue for IDLE drones, Green for ON_MISSION drones
  * Also draws lines between drones and their targets when on mission
  */
 void draw_drones()
@@ -467,8 +539,9 @@ void draw_drones()
 }
 
 /**
- * Draw all active survivors (status 0 or 1) on the map in red
- * Status 0 = Waiting for help, Status 1 = Being helped
+ * @brief Draw all active survivors on the map in red
+ * 
+ * Only draws survivors with status 0 (waiting) or 1 (being helped)
  */
 void draw_survivors()
 {
@@ -491,7 +564,9 @@ void draw_survivors()
 }
 
 /**
- * Draw the grid lines that represent the map
+ * @brief Draw the grid lines that represent the map
+ * 
+ * Creates a visual grid for the map area
  */
 void draw_grid()
 {
@@ -515,7 +590,9 @@ void draw_grid()
 }
 
 /**
- * Draw a test pattern for debugging visualization
+ * @brief Draw a test pattern for debugging visualization
+ * 
+ * Creates a checkerboard pattern to verify rendering is working
  */
 void draw_test_pattern()
 {
@@ -536,7 +613,10 @@ void draw_test_pattern()
 }
 
 /**
- * Draw the entire map including grid, survivors, drones, and info panel
+ * @brief Draw the entire map including grid, survivors, drones, and info panel
+ * 
+ * Main rendering function that composes the complete view
+ * 
  * @return 0 on success, 1 on failure
  */
 int draw_map()
@@ -566,7 +646,9 @@ int draw_map()
 }
 
 /**
- * Draw diagnostic graphics for troubleshooting
+ * @brief Draw diagnostic graphics for troubleshooting
+ * 
+ * Creates visual markers to help identify rendering issues
  */
 void draw_diagnostic()
 {
@@ -615,7 +697,10 @@ void draw_diagnostic()
 }
 
 /**
- * Check SDL events for user input
+ * @brief Check SDL events for user input
+ * 
+ * Processes SDL events like window close or escape key
+ * 
  * @return 1 if quit requested, 0 otherwise
  */
 int check_events()
@@ -632,7 +717,9 @@ int check_events()
 }
 
 /**
- * Clean up SDL resources
+ * @brief Clean up SDL resources
+ * 
+ * Frees all SDL resources before program exit
  */
 void quit_all()
 {

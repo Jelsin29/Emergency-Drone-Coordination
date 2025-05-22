@@ -1,0 +1,295 @@
+\href{https://classroom.github.com/a/Ckx1vpHM}{\texttt{ }} GUNCELLEMELER 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\#\# phase1'i yaparken (lab 10 yani),}
+\DoxyCodeLine{locklari init etmeyi unutmayin (create\_list icerisinde olabilir). Kodu test ederken once tum senkronizasyonlari devre disi birakin. Sonra adim adim tekrar yapin. Size verilen kod kismi olarak fikir vermesi bakimindan implementasyonlu verildi. Yoksa kod hatali!}
+\DoxyCodeLine{}
+\DoxyCodeLine{Listedeki add/remove/pop vb fonksiyonlara senkronizasyon ekledikten sonra bu fonksiyonlari cagirirken tekrardan lock/unlock yapmaniz gerekmiyor. Ancak iterasyon yaparsaniz onlarda ayni locki kullanmaniz gerekiyor.}
+\DoxyCodeLine{}
+\DoxyCodeLine{Buffer overflow/underflow vb leri icin semaphor yada condition variable kullanmaniz gerekiyor.}
+\DoxyCodeLine{Drone datasina erisirken herbir droneun ayrica locki var onlarida kullanmayi ihmal etmeyin.}
+\DoxyCodeLine{}
+\DoxyCodeLine{\#\# Phase-\/2de}
+\DoxyCodeLine{drone\_fleet yerine drones listeyi kullanmaniz gerekiyor. Cunku drone ekleme ve cikarma gelen requestlerle oluyor.}
+\DoxyCodeLine{}
+\DoxyCodeLine{communication-\/protocol.md dosyasinda haberlesme icin kullanilacak komut listesi var. En az onlar olsun, fazlasi ihtiyaca gore ekleyebilirsiniz. JSON parse etme icin hazir kod kullanabilirsiniz.}
+\DoxyCodeLine{}
+\DoxyCodeLine{\#\# view.cde}
+\DoxyCodeLine{listelerdeki locklardan bagimsiz bir yapiya kavusturursaniz iyi olur. Boylelikle, client tarafinda da kullanabilirsiniz. Bu durumda datayi kopyalamaniz veya verimli olmasi icin datadaki degisiklikleri gondermeniz gerekebilir. (snapshot aldiktan sonra o snapshota gore degisenler)}
+
+\end{DoxyCode}
+\hypertarget{md_README_autotoc_md43}{}\doxysubsection{$<$strong$>$\+Project\+: Emergency Drone Coordination System (\+Client-\/\+Server app)$<$/strong$>$}\label{md_README_autotoc_md43}
+{\bfseries{Objective}}\+: ~\newline
+ Transition from a simulator to a real client-\/server system where drones (clients) communicate with a central server to coordinate emergency aid for survivors (simulated by random generations). Students will implement synchronization, thread-\/safe data structures, and networked communication, mirroring real-\/world drone swarm coordination systems.
+
+\DoxyHorRuler{0}
+\hypertarget{md_README_autotoc_md45}{}\doxysubsubsection{$<$strong$>$\+Phased Implementation Plan$<$/strong$>$}\label{md_README_autotoc_md45}
+\hypertarget{md_README_autotoc_md46}{}\doxyparagraph{$<$strong$>$\+Phase 1 (given as a lab)\+: Thread-\/\+Safe Lists \& Simulated Clients/\+Servers$<$/strong$>$}\label{md_README_autotoc_md46}
+{\bfseries{Objective}}\+: Implement synchronization and simulate client-\/server interactions using threads $\ast$$\ast$(no sockets yet, drones are simulated as threads)$\ast$$\ast$. ~\newline
+ {\bfseries{Duration}}\+: 1 week ~\newline
+
+
+In the lab you will implement the synchronized lists necessary for the project. For instance, in Java there are conccurent data structures\href{https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/concurrent/package-summary.html}{\texttt{ see the link}} they provide thread safe datastructures.
+
+{\bfseries{In this thread safe data structures, you still need to use locks when you try to iterate over them.}} ~\newline
+
+\begin{DoxyItemize}
+\item You are given a partially implemented simulator. You need to implement synchronizations in the list. And change the lock/unlock mechanism in the simulator code.
+\end{DoxyItemize}
+
+{\bfseries{Tasks}}\+: ~\newline
+
+\begin{DoxyEnumerate}
+\item {\bfseries{Fix and Enhance the List Implementation}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item {\bfseries{Mandatory Fixes}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item Add {\ttfamily pthread\+\_\+mutex\+\_\+t} to the {\ttfamily List} struct in {\ttfamily list.\+h} and synchronize all operations ({\ttfamily add}, {\ttfamily remove}, {\ttfamily pop}). ~\newline
+
+\item Fix memory leaks in {\ttfamily \mbox{\hyperlink{list_8c_a8df412f5e360ce9b5b2f5a955b440ab3}{destroy()}}} by removing redundant {\ttfamily memset}. ~\newline
+
+\item Replace {\ttfamily sprintf} with {\ttfamily snprintf} in {\ttfamily listtest.\+c} to prevent buffer overflows.
+\item Remove unnecessary locks/unlocks
+\begin{DoxyItemize}
+\item use only in iterations(next etc)
+\end{DoxyItemize}
+\end{DoxyItemize}
+\item {\bfseries{Optional Efficiency Improvements}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item Implement a {\itshape free list} to reuse nodes and reduce allocation overhead.
+\end{DoxyItemize}
+\end{DoxyItemize}
+\item {\bfseries{Simulate Drones and Survivors with Threads}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item {\bfseries{Drone Simulator Thread}}\+: ~\newline
+ \`{}\`{}\`{}c ~\newline
+ void$\ast$ drone\+\_\+behavior(void $<$em$>$arg) \{ Drone $\ast$d = (Drone)arg;
+
+while(1) \{ pthread\+\_\+mutex\+\_\+lock(\&d-\/$>$lock);
+
+if(d-\/$>$status == ON\+\_\+\+MISSION) \{ // Move toward target (1 cell per iteration) if(d-\/$>$coord.\+x $<$ d-\/$>$target.\+x) d-\/$>$coord.\+x++; else if(d-\/$>$coord.\+x $>$ d-\/$>$target.\+x) d-\/$>$coord.\+x--;
+
+if(d-\/$>$coord.\+y $<$ d-\/$>$target.\+y) d-\/$>$coord.\+y++; else if(d-\/$>$coord.\+y $>$ d-\/$>$target.\+y) d-\/$>$coord.\+y--;
+
+// Check mission completion if(d-\/$>$coord.\+x == d-\/$>$target.\+x \&\& d-\/$>$coord.\+y == d-\/$>$target.\+y) \{ d-\/$>$status = IDLE; printf(\char`\"{}\+Drone \%d\+: Mission completed!\textbackslash{}n\char`\"{}, d-\/$>$id); \} \}
+
+pthread\+\_\+mutex\+\_\+unlock(\&d-\/$>$lock); sleep(1); // Update every second \} return NULL; \} \`{}\`{}\`{} ~\newline
+
+\item {\bfseries{Survivor Generator Thread}}\+: ~\newline
+ \`{}\`{}\`{}c ~\newline
+ void$\ast$ survivor\+\_\+generator(void$\ast$ arg) \{ ~\newline
+ while (1) \{ ~\newline
+ // Generate random survivors ~\newline
+ // Add to synchronized {\ttfamily survivor\+\_\+list} ~\newline
+ sleep(2); ~\newline
+ \} ~\newline
+ \} ~\newline
+ \`{}\`{}\`{} ~\newline
+
+\end{DoxyItemize}
+\item {\bfseries{Visualize with SDL}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item Update {\ttfamily view.\+c} to show\+: ~\newline
+
+\begin{DoxyItemize}
+\item Survivors as {\bfseries{red cells}}, idle drones as {\bfseries{blue dots}}, and missions as {\bfseries{green lines}}. ~\newline
+
+\end{DoxyItemize}
+\end{DoxyItemize}
+\end{DoxyEnumerate}
+
+\DoxyHorRuler{0}
+\hypertarget{md_README_autotoc_md48}{}\doxyparagraph{$<$strong$>$\+Phase 2\+: Basic Socket Communication$<$/strong$>$}\label{md_README_autotoc_md48}
+see \mbox{\hyperlink{md_communication_protocol}{communication protocol details}}
+
+{\bfseries{Objective}}\+: Replace simulated threads with real socket-\/based clients and servers. ~\newline
+ {\bfseries{Duration}}\+: 1 week (after socket lectures) ~\newline
+
+
+{\bfseries{Tasks}}\+: ~\newline
+
+\begin{DoxyEnumerate}
+\item {\bfseries{Server Implementation}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item Create a multi-\/threaded server that\+: ~\newline
+
+\begin{DoxyItemize}
+\item Listens for incoming drone connections (TCP). ~\newline
+
+\item Maintains a synchronized list of active drones and survivors. ~\newline
+
+\end{DoxyItemize}
+\item Example server loop\+: ~\newline
+ \`{}\`{}\`{}c ~\newline
+ while (1) \{ ~\newline
+ int drone\+\_\+fd = accept(server\+\_\+fd, (struct sockaddr$\ast$)\&client\+\_\+addr, \&addr\+\_\+len); ~\newline
+ pthread\+\_\+create(\&thread\+\_\+id, NULL, handle\+\_\+drone, (void$\ast$)\&drone\+\_\+fd); ~\newline
+ \} ~\newline
+ \`{}\`{}\`{} ~\newline
+
+\end{DoxyItemize}
+\item {\bfseries{Drone Client Implementation}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item Drones connect to the server and send periodic status updates (JSON format)\+: ~\newline
+ \`{}\`{}\`{}json ~\newline
+ \{ \char`\"{}drone\+\_\+id\char`\"{}\+: \char`\"{}\+D1\char`\"{}, \char`\"{}status\char`\"{}\+: \char`\"{}idle\char`\"{}, \char`\"{}location\char`\"{}\+: \mbox{[}10, 20\mbox{]} \} ~\newline
+ \`{}\`{}{\ttfamily $<$br$>$}
+\item {\ttfamily Receive mission assignments (e.\+g.,}\{\char`\"{}type\char`\"{}\+: \char`\"{}mission\char`\"{}, \char`\"{}target\char`\"{}\+: \mbox{[}x, y\mbox{]}\}\`{}). ~\newline
+
+\end{DoxyItemize}
+\item {\bfseries{AI Controller Logic}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item Assign closest idle drone to the oldest unhelped survivor (prioritize fairness). ~\newline
+
+\end{DoxyItemize}
+\end{DoxyEnumerate}
+
+\DoxyHorRuler{0}
+\hypertarget{md_README_autotoc_md50}{}\doxyparagraph{$<$strong$>$\+Phase 3\+: Advanced Features \& Testing$<$/strong$>$}\label{md_README_autotoc_md50}
+{\bfseries{Objective}}\+: Optimize performance and handle edge cases. ~\newline
+ {\bfseries{Duration}}\+: 1 week ~\newline
+
+
+{\bfseries{Tasks}}\+: ~\newline
+
+\begin{DoxyEnumerate}
+\item {\bfseries{Load Testing}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item Simulate 50+ drones and measure server throughput. ~\newline
+
+\end{DoxyItemize}
+\item {\bfseries{Fault Tolerance}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item Handle disconnected drones (e.\+g., reassign missions after timeout). ~\newline
+
+\end{DoxyItemize}
+\item {\bfseries{Optional Extensions}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item Add a web-\/based dashboard using Web\+Socket for real-\/time monitoring.
+\begin{DoxyItemize}
+\item Or you can use view.\+c as a client version
+\item Server sends the changes to the client or the whole data and client shows it
+\end{DoxyItemize}
+\item Implement QoS (quality of service) e.\+g., prioritize critically injured survivors. ~\newline
+
+\end{DoxyItemize}
+\end{DoxyEnumerate}
+
+\DoxyHorRuler{0}
+\hypertarget{md_README_autotoc_md52}{}\doxysubsubsection{$<$strong$>$\+Technical Components$<$/strong$>$}\label{md_README_autotoc_md52}
+\hypertarget{md_README_autotoc_md53}{}\doxyparagraph{$<$strong$>$\+Client (\+Drone)$<$/strong$>$}\label{md_README_autotoc_md53}
+
+\begin{DoxyItemize}
+\item {\bfseries{Key Functions}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item {\ttfamily connect\+\_\+to\+\_\+server()}\+: Establishes TCP connection. ~\newline
+
+\item {\ttfamily send\+\_\+status\+\_\+update()}\+: Periodically reports drone state. ~\newline
+
+\item {\ttfamily navigate\+\_\+to\+\_\+target()}\+: Simulates movement toward survivor coordinates. ~\newline
+
+\end{DoxyItemize}
+\end{DoxyItemize}\hypertarget{md_README_autotoc_md54}{}\doxyparagraph{$<$strong$>$\+Server$<$/strong$>$}\label{md_README_autotoc_md54}
+
+\begin{DoxyItemize}
+\item {\bfseries{Key Functions}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item {\ttfamily handle\+\_\+drone()}\+: Thread to manage each drone connection. ~\newline
+
+\item {\ttfamily assign\+\_\+missions()}\+: AI logic to match drones and survivors. ~\newline
+
+\item {\ttfamily log\+\_\+performance()}\+: Track average survivor wait time and drone utilization. ~\newline
+
+\end{DoxyItemize}
+\end{DoxyItemize}\hypertarget{md_README_autotoc_md55}{}\doxyparagraph{$<$strong$>$\+Communication Protocol (see @ref /home/jelsin/clases/programlama/project2-\/emergency-\/drone-\/coordination-\/venezuela/communication-\/protocol.\+md \char`\"{}communcation-\/protocol.\+md\char`\"{})$<$/strong$>$}\label{md_README_autotoc_md55}
+
+\begin{DoxyItemize}
+\item {\bfseries{Messages}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item Drone → Server\+: {\ttfamily STATUS\+\_\+\+UPDATE}, {\ttfamily MISSION\+\_\+\+COMPLETE}. ~\newline
+
+\item Server → Drone\+: {\ttfamily ASSIGN\+\_\+\+MISSION}, {\ttfamily HEARTBEAT}. ~\newline
+
+\end{DoxyItemize}
+\item {\bfseries{Format}}\+: JSON (simple, human-\/readable). ~\newline
+
+\end{DoxyItemize}
+
+\DoxyHorRuler{0}
+\hypertarget{md_README_autotoc_md57}{}\doxysubsubsection{$<$strong$>$\+Learning Outcomes$<$/strong$>$}\label{md_README_autotoc_md57}
+
+\begin{DoxyEnumerate}
+\item {\bfseries{Core Skills}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item Thread synchronization (mutexes), socket programming, and client-\/server design. ~\newline
+
+\end{DoxyItemize}
+\item {\bfseries{Real-\/\+World Relevance}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item Mirrors systems like Zipline’s medical delivery drones or Amazon’s delivery swarms. ~\newline
+
+\end{DoxyItemize}
+\item {\bfseries{Problem Solving}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item Debug race conditions, optimize latency, and handle scalability. ~\newline
+
+\end{DoxyItemize}
+\end{DoxyEnumerate}
+
+\DoxyHorRuler{0}
+\hypertarget{md_README_autotoc_md59}{}\doxysubsubsection{$<$strong$>$\+Grading Criteria$<$/strong$>$}\label{md_README_autotoc_md59}
+
+\begin{DoxyItemize}
+\item {\bfseries{Code (50\%)}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item Thread-\/safe lists, working socket communication, AI logic. ~\newline
+
+\end{DoxyItemize}
+\item {\bfseries{Report (25\%)}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item Explain design choices, synchronization strategy, and performance analysis. ~\newline
+
+\end{DoxyItemize}
+\item {\bfseries{Demo (25\%)}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item Show handling of 10+ concurrent drones with real-\/time SDL visualization. ~\newline
+
+\end{DoxyItemize}
+\end{DoxyItemize}
+
+\DoxyHorRuler{0}
+\hypertarget{md_README_autotoc_md61}{}\doxysubsubsection{$<$strong$>$\+Tools \& Starter Code$<$/strong$>$}\label{md_README_autotoc_md61}
+
+\begin{DoxyItemize}
+\item {\bfseries{Provided}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item {\ttfamily list.\+h/c} (needs to be fixed), SDL visualization framework, a simulator code as skeleton. ~\newline
+
+\end{DoxyItemize}
+\item {\bfseries{Recommended Libraries}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item {\ttfamily json-\/c} (message parsing), {\ttfamily SDL2} (visualization). ~\newline
+ 
+\end{DoxyItemize}
+\end{DoxyItemize}

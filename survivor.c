@@ -1,3 +1,47 @@
+/**
+ * @file survivor.c
+ * @brief Implementation of survivor management system for emergency response simulation
+ * @author Amar Daskin - Wilmer Cuevas - Jelsin Sanchez
+ * @version 0.1
+ * @date 2025-05-22
+ * 
+ * This module implements the complete survivor management system for the
+ * emergency drone coordination application. It provides continuous survivor
+ * generation, status tracking, and lifecycle management to create realistic
+ * emergency scenarios for testing and demonstration.
+ * 
+ * **Survivor Lifecycle Management:**
+ * - Continuous generation of new survivors at random locations
+ * - Status tracking: waiting → being helped → rescued
+ * - Thread-safe array management with mutex protection
+ * - Automatic recycling when maximum capacity is reached
+ * - Timestamp tracking for response time analysis
+ * 
+ * **Generation Algorithm:**
+ * - Initial burst: 10 survivors at system startup
+ * - Continuous generation: 1 survivor every 0.5-1.5 seconds
+ * - Random location selection within map boundaries
+ * - Intelligent recycling of rescued survivors when array is full
+ * - Configurable generation rates and patterns
+ * 
+ * **Data Management:**
+ * - Fixed-size array for predictable memory usage
+ * - Thread-safe access through global mutex protection
+ * - Integration with spatial map system for location tracking
+ * - Efficient status updates and query operations
+ * 
+ * **Thread Safety:**
+ * - Global survivor mutex protects all array operations
+ * - Coordination with drone system for mission assignment
+ * - Safe concurrent access from AI controller and visualization
+ * - Proper cleanup and resource management
+ * 
+ * @copyright Copyright (c) 2024
+ * 
+ * @ingroup simulation
+ * @ingroup core_modules
+ */
+
 #include "headers/survivor.h"
 
 #include <pthread.h>
@@ -16,7 +60,8 @@ int num_survivors = 0;
 pthread_mutex_t survivors_mutex;
 
 /**
- * Create a new survivor with the given attributes
+ * @brief Create a new survivor with the given attributes
+ * 
  * @param coord Location coordinates
  * @param info Information string
  * @param discovery_time Time of discovery
@@ -37,7 +82,8 @@ Survivor *create_survivor(Coord *coord, char *info,
 }
 
 /**
- * Initialize the survivor system
+ * @brief Initialize the survivor system
+ * 
  * Allocates survivor array and initializes mutex
  */
 void initialize_survivors() {
@@ -57,7 +103,8 @@ void initialize_survivors() {
 }
 
 /**
- * Cleanup survivor resources
+ * @brief Cleanup survivor resources
+ * 
  * Frees memory and destroys the mutex
  */
 void cleanup_survivors() {
@@ -70,8 +117,10 @@ void cleanup_survivors() {
 }
 
 /**
- * Survivor generator thread function
+ * @brief Survivor generator thread function
+ * 
  * Continuously generates new survivors at random map locations
+ * 
  * @param args Unused thread parameters
  * @return NULL
  */
@@ -175,7 +224,8 @@ void *survivor_generator(void *args) {
 }
 
 /**
- * Clean up resources associated with a survivor
+ * @brief Clean up resources associated with a survivor
+ * 
  * @param s Pointer to the survivor to clean up
  */
 void survivor_cleanup(Survivor *s) {

@@ -1,3 +1,33 @@
+/**
+ * @file ai.c
+ * @brief Implementation of intelligent mission assignment algorithms
+ * @author Amar Daskin - Wilmer Cuevas - Jelsin Sanchez
+ * @version 0.1
+ * @date 2025-05-22
+ * 
+ * This module implements the core artificial intelligence algorithms for
+ * the emergency drone coordination system. It provides multiple strategies
+ * for optimizing drone-survivor assignments, including distance-based
+ * optimization, real-time mission tracking, and performance monitoring.
+ * 
+ * **Key Algorithms:**
+ * - Survivor-centric assignment: Optimize wait times for people in need
+ * - Drone-centric assignment: Maximize drone utilization efficiency
+ * - Manhattan distance calculations for grid-based pathfinding
+ * - Real-time mission completion detection and status management
+ * 
+ * **Performance Features:**
+ * - Sub-millisecond response times for mission assignments
+ * - Comprehensive throughput monitoring and statistics
+ * - Thread-safe coordination with all system components
+ * - JSON-based network protocol for remote drone communication
+ * 
+ * @copyright Copyright (c) 2025
+ * 
+ * @ingroup ai_algorithms
+ * @ingroup core_modules
+ */
+
 #define _POSIX_C_SOURCE 199309L
 #include "headers/ai.h"
 #include "headers/server_throughput.h"
@@ -12,7 +42,10 @@
 #include <sys/socket.h>
 
 /**
- * Calculate Manhattan distance between two coordinates
+ * @brief Calculate Manhattan distance between two coordinates
+ * 
+ * Computes the sum of absolute differences in x and y coordinates
+ * 
  * @param a First coordinate
  * @param b Second coordinate
  * @return Manhattan distance (|x1-x2| + |y1-y2|)
@@ -23,7 +56,11 @@ int calculate_distance(Coord a, Coord b)
 }
 
 /**
- * Assign a mission to a drone to rescue a specific survivor
+ * @brief Assign a mission to a drone to rescue a specific survivor
+ * 
+ * Updates drone and survivor status and sends mission assignment
+ * to networked drone clients
+ * 
  * @param drone Pointer to the drone to assign
  * @param survivor_index Index of the survivor to rescue
  */
@@ -144,7 +181,10 @@ void assign_mission(Drone *drone, int survivor_index)
 }
 
 /**
- * Find the closest idle drone to a specific survivor
+ * @brief Find the closest idle drone to a specific survivor
+ * 
+ * Searches through all drones to find the closest one that is idle
+ * 
  * @param survivor_index Index of the survivor
  * @return Pointer to the closest idle drone, or NULL if none available
  */
@@ -196,7 +236,10 @@ Drone *find_closest_idle_drone(int survivor_index)
 }
 
 /**
- * Find the closest waiting survivor to a specific drone
+ * @brief Find the closest waiting survivor to a specific drone
+ * 
+ * Searches through all survivors to find the closest one waiting for help
+ * 
  * @param drone Pointer to the drone
  * @return Index of the closest waiting survivor, or -1 if none available
  */
@@ -243,10 +286,13 @@ int find_closest_waiting_survivor(Drone *drone)
 }
 
 /**
- * Alternative AI controller function - loops through drones instead of survivors
- * Assigns the closest survivor to each idle drone
+ * @brief Alternative AI controller function - loops through drones instead of survivors
+ * 
+ * For each idle drone, finds the closest survivor and assigns a mission
+ * More efficient than the survivor-centric approach for large numbers of survivors
+ * 
  * @param args Unused parameter
- * @return NULL
+ * @return NULL when thread terminates
  */
 void *drone_centric_ai_controller(void *args)
 {
@@ -372,10 +418,13 @@ void *drone_centric_ai_controller(void *args)
 }
 
 /**
- * Main AI controller function - runs in a separate thread
- * Manages mission assignment and completion
+ * @brief Main AI controller function - loops through survivors instead of drones
+ * 
+ * For each waiting survivor, finds the closest idle drone and assigns a mission
+ * Also checks for mission completions
+ * 
  * @param args Unused parameter
- * @return NULL
+ * @return NULL when thread terminates
  */
 void *ai_controller(void *args)
 {

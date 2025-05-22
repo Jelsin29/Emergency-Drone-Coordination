@@ -1,0 +1,223 @@
+To standardize interactions between drones (clients) and the server, you should implement the following protocol.
+\begin{DoxyItemize}
+\item This protocol ensures interoperability between your projects while leaving room for custom AI logic (e.\+g., mission prioritization). You can extend it with optional fields like {\ttfamily emergency\+\_\+level} or {\ttfamily weather\+\_\+conditions}.
+\end{DoxyItemize}
+
+\DoxyHorRuler{0}
+\hypertarget{md_communication_protocol_autotoc_md2}{}\doxysubsection{$<$strong$>$\+Communication Protocol$<$/strong$>$}\label{md_communication_protocol_autotoc_md2}
+{\bfseries{Transport}}\+: TCP (reliable, ordered delivery). ~\newline
+ {\bfseries{Encoding}}\+: JSON (UTF-\/8). ~\newline
+ {\bfseries{Message Types}}\+: ~\newline
+
+
+\tabulinesep=1mm
+\begin{longtabu}spread 0pt [c]{*{3}{|X[-1]}|}
+\hline
+\PBS\centering \cellcolor{\tableheadbgcolor}\textbf{ {\bfseries{Direction}}   }&\PBS\centering \cellcolor{\tableheadbgcolor}\textbf{ {\bfseries{Message Type}}   }&\PBS\centering \cellcolor{\tableheadbgcolor}\textbf{ {\bfseries{Purpose}}    }\\\cline{1-3}
+\endfirsthead
+\hline
+\endfoot
+\hline
+\PBS\centering \cellcolor{\tableheadbgcolor}\textbf{ {\bfseries{Direction}}   }&\PBS\centering \cellcolor{\tableheadbgcolor}\textbf{ {\bfseries{Message Type}}   }&\PBS\centering \cellcolor{\tableheadbgcolor}\textbf{ {\bfseries{Purpose}}    }\\\cline{1-3}
+\endhead
+{\bfseries{Drone → Server}}   &{\ttfamily HANDSHAKE}   &Register drone with server (initial connection).    \\\cline{1-3}
+&{\ttfamily STATUS\+\_\+\+UPDATE}   &Periodic updates (location, battery, status).    \\\cline{1-3}
+&{\ttfamily MISSION\+\_\+\+COMPLETE}   &Notify server of mission completion.    \\\cline{1-3}
+&{\ttfamily HEARTBEAT\+\_\+\+RESPONSE}   &Acknowledge server’s heartbeat.    \\\cline{1-3}
+{\bfseries{Server → Drone}}   &{\ttfamily HANDSHAKE\+\_\+\+ACK}   &Confirm drone registration.    \\\cline{1-3}
+&{\ttfamily ASSIGN\+\_\+\+MISSION}   &Assign a mission (target coordinates).    \\\cline{1-3}
+&{\ttfamily HEARTBEAT}   &Check if drone is alive (sent periodically).    \\\cline{1-3}
+{\bfseries{Either → Either}}   &{\ttfamily ERROR}   &Report protocol violations, invalid missions, or connection issues.   \\\cline{1-3}
+\end{longtabu}
+
+
+\DoxyHorRuler{0}
+\hypertarget{md_communication_protocol_autotoc_md4}{}\doxysubsection{$<$strong$>$1. Message Formats$<$/strong$>$}\label{md_communication_protocol_autotoc_md4}
+\hypertarget{md_communication_protocol_autotoc_md5}{}\doxysubsubsection{$<$strong$>$\+Drone → Server$<$/strong$>$}\label{md_communication_protocol_autotoc_md5}
+{\bfseries{A. {\ttfamily HANDSHAKE} (Initial Connection)}} ~\newline
+ 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\{}
+\DoxyCodeLine{  "{}type"{}: "{}HANDSHAKE"{},}
+\DoxyCodeLine{  "{}drone\_id"{}: "{}D1"{},}
+\DoxyCodeLine{  "{}capabilities"{}: \{}
+\DoxyCodeLine{    "{}max\_speed"{}: 30,}
+\DoxyCodeLine{    "{}battery\_capacity"{}: 100,}
+\DoxyCodeLine{    "{}payload"{}: "{}medical"{}}
+\DoxyCodeLine{  \}}
+\DoxyCodeLine{\}}
+
+\end{DoxyCode}
+
+
+{\bfseries{B. {\ttfamily STATUS\+\_\+\+UPDATE} (Periodic Updates)}} ~\newline
+ 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\{}
+\DoxyCodeLine{  "{}type"{}: "{}STATUS\_UPDATE"{},}
+\DoxyCodeLine{  "{}drone\_id"{}: "{}D1"{},}
+\DoxyCodeLine{  "{}timestamp"{}: 1620000000,}
+\DoxyCodeLine{  "{}location"{}: \{"{}x"{}: 10, "{}y"{}: 20\},}
+\DoxyCodeLine{  "{}status"{}: "{}idle"{},  // "{}idle"{}, "{}busy"{}, "{}charging"{}}
+\DoxyCodeLine{  "{}battery"{}: 85,}
+\DoxyCodeLine{  "{}speed"{}: 5}
+\DoxyCodeLine{\}}
+
+\end{DoxyCode}
+
+
+{\bfseries{C. {\ttfamily MISSION\+\_\+\+COMPLETE}}} ~\newline
+ 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\{}
+\DoxyCodeLine{  "{}type"{}: "{}MISSION\_COMPLETE"{},}
+\DoxyCodeLine{  "{}drone\_id"{}: "{}D1"{},}
+\DoxyCodeLine{  "{}mission\_id"{}: "{}M123"{},}
+\DoxyCodeLine{  "{}timestamp"{}: 1620000000,}
+\DoxyCodeLine{  "{}success"{}: true,}
+\DoxyCodeLine{  "{}details"{}: "{}Delivered aid to survivor."{}}
+\DoxyCodeLine{\}}
+
+\end{DoxyCode}
+
+
+{\bfseries{D. {\ttfamily HEARTBEAT\+\_\+\+RESPONSE}}} ~\newline
+ 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\{}
+\DoxyCodeLine{  "{}type"{}: "{}HEARTBEAT\_RESPONSE"{},}
+\DoxyCodeLine{  "{}drone\_id"{}: "{}D1"{},}
+\DoxyCodeLine{  "{}timestamp"{}: 1620000000}
+\DoxyCodeLine{\}}
+
+\end{DoxyCode}
+
+
+\DoxyHorRuler{0}
+\hypertarget{md_communication_protocol_autotoc_md7}{}\doxysubsubsection{$<$strong$>$\+Server → Drone$<$/strong$>$}\label{md_communication_protocol_autotoc_md7}
+{\bfseries{A. {\ttfamily HANDSHAKE\+\_\+\+ACK}}} ~\newline
+ 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\{}
+\DoxyCodeLine{  "{}type"{}: "{}HANDSHAKE\_ACK"{},}
+\DoxyCodeLine{  "{}session\_id"{}: "{}S123"{},}
+\DoxyCodeLine{  "{}config"{}: \{}
+\DoxyCodeLine{    "{}status\_update\_interval"{}: 5,  // in seconds}
+\DoxyCodeLine{    "{}heartbeat\_interval"{}: 10}
+\DoxyCodeLine{  \}}
+\DoxyCodeLine{\}}
+
+\end{DoxyCode}
+
+
+{\bfseries{B. {\ttfamily ASSIGN\+\_\+\+MISSION}}} ~\newline
+ 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\{}
+\DoxyCodeLine{  "{}type"{}: "{}ASSIGN\_MISSION"{},}
+\DoxyCodeLine{  "{}mission\_id"{}: "{}M123"{},}
+\DoxyCodeLine{  "{}priority"{}: "{}high"{},  // "{}low"{}, "{}medium"{}, "{}high"{}}
+\DoxyCodeLine{  "{}target"{}: \{"{}x"{}: 45, "{}y"{}: 30\},}
+\DoxyCodeLine{  "{}expiry"{}: 1620003600,  // mission expiry timestamp}
+\DoxyCodeLine{  "{}checksum"{}: "{}a1b2c3"{}   // optional data integrity check}
+\DoxyCodeLine{\}}
+
+\end{DoxyCode}
+
+
+{\bfseries{C. {\ttfamily HEARTBEAT}}} ~\newline
+ 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\{}
+\DoxyCodeLine{  "{}type"{}: "{}HEARTBEAT"{},}
+\DoxyCodeLine{  "{}timestamp"{}: 1620000000}
+\DoxyCodeLine{\}}
+
+\end{DoxyCode}
+
+
+{\bfseries{D. {\ttfamily ERROR}}} ~\newline
+ 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\{}
+\DoxyCodeLine{  "{}type"{}: "{}ERROR"{},}
+\DoxyCodeLine{  "{}code"{}: 404,}
+\DoxyCodeLine{  "{}message"{}: "{}Mission M123 not found."{},}
+\DoxyCodeLine{  "{}timestamp"{}: 1620000000}
+\DoxyCodeLine{\}}
+
+\end{DoxyCode}
+
+
+\DoxyHorRuler{0}
+\hypertarget{md_communication_protocol_autotoc_md9}{}\doxysubsection{$<$strong$>$2. Sequence Diagram$<$/strong$>$}\label{md_communication_protocol_autotoc_md9}
+
+\begin{DoxyCode}{0}
+\DoxyCodeLine{Drone                   Server}
+\DoxyCodeLine{|-\/-\/-\/-\/HANDSHAKE-\/-\/-\/-\/-\/-\/-\/-\/-\/>|      // Drone registers}
+\DoxyCodeLine{|<-\/-\/-\/HANDSHAKE\_ACK-\/-\/-\/-\/-\/-\/|      // Server confirms}
+\DoxyCodeLine{|-\/-\/-\/-\/STATUS\_UPDATE-\/-\/-\/-\/-\/>|      // Periodic updates}
+\DoxyCodeLine{|<-\/-\/-\/ASSIGN\_MISSION-\/-\/-\/-\/-\/|      // Server assigns mission}
+\DoxyCodeLine{|-\/-\/-\/-\/MISSION\_COMPLETE-\/-\/>|      // Drone completes mission}
+\DoxyCodeLine{|<-\/-\/-\/-\/-\/-\/-\/HEARTBEAT-\/-\/-\/-\/-\/-\/|      // Server checks liveness}
+\DoxyCodeLine{|-\/-\/-\/-\/HEARTBEAT\_RESPONSE>|      // Drone responds}
+
+\end{DoxyCode}
+
+
+\DoxyHorRuler{0}
+\hypertarget{md_communication_protocol_autotoc_md11}{}\doxysubsection{$<$strong$>$3. Rules \& Conventions$<$/strong$>$}\label{md_communication_protocol_autotoc_md11}
+
+\begin{DoxyEnumerate}
+\item {\bfseries{Timestamps}}\+: Unix epoch time (UTC). ~\newline
+
+\item {\bfseries{Coordinates}}\+: Grid-\/based ({\ttfamily x}, {\ttfamily y} as integers). ~\newline
+
+\item {\bfseries{Mission IDs}}\+: Unique strings (e.\+g., {\ttfamily M123}). ~\newline
+
+\item {\bfseries{Heartbeats}}\+: If a drone misses 3 heartbeats, mark it {\ttfamily disconnected}. ~\newline
+
+\item {\bfseries{Error Codes}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item {\ttfamily 400}\+: Invalid JSON. ~\newline
+
+\item {\ttfamily 404}\+: Mission not found. ~\newline
+
+\item {\ttfamily 503}\+: Server overloaded. ~\newline
+
+\end{DoxyItemize}
+\end{DoxyEnumerate}
+
+\DoxyHorRuler{0}
+\hypertarget{md_communication_protocol_autotoc_md13}{}\doxysubsection{$<$strong$>$4. Example Workflow$<$/strong$>$}\label{md_communication_protocol_autotoc_md13}
+
+\begin{DoxyEnumerate}
+\item {\bfseries{Drone Registration}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item Drone sends {\ttfamily HANDSHAKE}. ~\newline
+
+\item Server replies with {\ttfamily HANDSHAKE\+\_\+\+ACK} and configuration. ~\newline
+
+\end{DoxyItemize}
+\item {\bfseries{Mission Assignment}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item Server sends {\ttfamily ASSIGN\+\_\+\+MISSION} to closest idle drone. ~\newline
+
+\item Drone acknowledges by starting navigation. ~\newline
+
+\end{DoxyItemize}
+\item {\bfseries{Mission Completion}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item Drone sends {\ttfamily MISSION\+\_\+\+COMPLETE} on success/failure. ~\newline
+
+\item Server updates survivor list and drone status. ~\newline
+
+\end{DoxyItemize}
+\end{DoxyEnumerate}
+
+\DoxyHorRuler{0}
+ 

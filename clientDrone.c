@@ -1,3 +1,40 @@
+/**
+ * @file clientDrone.c
+ * @brief Client-side autonomous drone implementation for emergency coordination
+ * @author Amar Daskin - Wilmer Cuevas - Jelsin Sanchez
+ * @version 0.1
+ * @date 2025-05-22
+ * 
+ * This module implements the complete client-side drone functionality for
+ * the emergency response system. It provides autonomous drone behavior,
+ * network communication with the coordination server, and real-time
+ * mission execution capabilities.
+ * 
+ * **Core Functionality:**
+ * - Autonomous movement and navigation toward assigned targets
+ * - Real-time network communication with the coordination server
+ * - JSON-based protocol implementation for all message types
+ * - Performance monitoring and metrics collection
+ * - Thread-safe status updates and mission reporting
+ * 
+ * **Network Protocol:**
+ * - HANDSHAKE: Initial connection and registration
+ * - STATUS_UPDATE: Regular position and status reporting
+ * - MISSION_COMPLETE: Notification of successful rescue completion
+ * - HEARTBEAT_RESPONSE: Connection keep-alive acknowledgments
+ * 
+ * **Autonomous Behavior:**
+ * - Step-by-step movement toward mission targets
+ * - Automatic mission completion detection
+ * - Status transitions: IDLE → ON_MISSION → IDLE
+ * - Real-time position updates during movement
+ * 
+ * @copyright Copyright (c) 2024
+ * 
+ * @ingroup networking
+ * @ingroup client_modules
+ */
+
 #define _POSIX_C_SOURCE 199309L
 #define _DEFAULT_SOURCE
 #include <arpa/inet.h>
@@ -13,17 +50,48 @@
 #include <time.h>
 #include <json-c/json.h>
 
+/** @def SERVER_IP
+ *  @brief Default server IP address for drone-server communication
+ */
 #define SERVER_IP "127.0.0.1"
+
+/** @def SERVER_PORT
+ *  @brief Default server port for drone-server communication
+ */
 #define SERVER_PORT 8080
+
+/** @def BUFFER_SIZE
+ *  @brief Size of buffer for network communications
+ */
 #define BUFFER_SIZE 1024
 
+/** @brief Global drone instance representing this client's drone */
 Drone my_drone = {0};
-pthread_t thread_id;
-pthread_t throughput_monitor;
-volatile int running = 1;
-int sock; // Global socket for both threads
-pthread_mutex_t sock_mutex = PTHREAD_MUTEX_INITIALIZER; // Add socket mutex
 
+/** @brief Thread ID for the main drone behavior thread */
+pthread_t thread_id;
+
+/** @brief Thread ID for performance monitoring thread */
+pthread_t throughput_monitor;
+
+/** @brief Flag to control thread execution */
+volatile int running = 1;
+
+/** @brief Global socket for network communication */
+int sock;
+
+/** @brief Mutex to protect socket access between threads */
+pthread_mutex_t sock_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/**
+ * @brief Main drone behavior implementation
+ * 
+ * This function runs in a separate thread and controls drone movement.
+ * It handles target navigation, status updates, and mission completion notifications.
+ * 
+ * @param arg Unused thread parameter
+ * @return NULL when thread terminates
+ */
 void* drone_behavior(void *arg) {
     (void)arg; // Unused parameter
 
@@ -185,6 +253,15 @@ void* drone_behavior(void *arg) {
     return NULL;
 }
 
+/**
+ * @brief Monitor and regularly print drone status
+ * 
+ * This function runs in a separate thread and periodically outputs
+ * the current state of the drone for debugging purposes.
+ * 
+ * @param arg Unused thread parameter
+ * @return NULL when thread terminates
+ */
 void* drone_status_monitor(void *arg) {
     (void)arg; // Unused parameter
 
@@ -203,6 +280,15 @@ void* drone_status_monitor(void *arg) {
     return NULL;
 }
 
+/**
+ * @brief Main function for the drone client
+ * 
+ * Initializes the drone client, connects to the server, handles the
+ * handshake process, and processes messages from the server including
+ * mission assignments and heartbeats.
+ *
+ * @return EXIT_SUCCESS on successful execution, EXIT_FAILURE otherwise
+ */
 int main()
 {
     struct sockaddr_in server_addr;

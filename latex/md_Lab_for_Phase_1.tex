@@ -1,0 +1,363 @@
+\hypertarget{md_Lab_for_Phase_1_autotoc_md16}{}\doxysection{$<$strong$>$\+Phase 1\+: Synchronized Lists \& Simulated Drone Behavior$<$/strong$>$}\label{md_Lab_for_Phase_1_autotoc_md16}
+This lab you will implement the synchronized lists necessary for the project. For instance, in Java there are conccurent data structures\href{https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/concurrent/package-summary.html}{\texttt{ see the link}} they provide thread safe datastructures.
+
+{\bfseries{In this thread safe data structures, you still need to use locks when you try to iterate over them.}} ~\newline
+
+\begin{DoxyItemize}
+\item You are given a partially implemented simulator. You need to implement synchronizations in the list. And change the lock/unlock mechanism in the simulator code.
+\end{DoxyItemize}
+
+\DoxyHorRuler{0}
+\hypertarget{md_Lab_for_Phase_1_autotoc_md18}{}\doxysection{$<$strong$>$\+Objective$<$/strong$>$}\label{md_Lab_for_Phase_1_autotoc_md18}
+Implement a thread-\/safe, multi-\/drone simulator where autonomous drones (as threads) coordinate to assist survivors on a map. Students will\+: ~\newline
+
+\begin{DoxyEnumerate}
+\item Fix and synchronize a shared list data structure. ~\newline
+
+\item Fix the simulator code
+\item Simulate drone behavior using threads. ~\newline
+
+\item Implement an AI controller to assign missions. ~\newline
+
+\item Visualize drone/survivor states with SDL. ~\newline
+
+\end{DoxyEnumerate}
+
+{\bfseries{This phase lays the foundation for Phase 2 (client-\/server networking)}}. ~\newline
+
+
+\DoxyHorRuler{0}
+\hypertarget{md_Lab_for_Phase_1_autotoc_md20}{}\doxysection{$<$strong$>$\+Background$<$/strong$>$}\label{md_Lab_for_Phase_1_autotoc_md20}
+In disaster scenarios, drone swarms assist survivors by delivering aid. This lab simulates this system using threads and shared data structures. The core challenge is ensuring thread safety and efficient coordination. ~\newline
+
+
+\DoxyHorRuler{0}
+\hypertarget{md_Lab_for_Phase_1_autotoc_md22}{}\doxysection{$<$strong$>$\+Tasks$<$/strong$>$}\label{md_Lab_for_Phase_1_autotoc_md22}
+\hypertarget{md_Lab_for_Phase_1_autotoc_md23}{}\doxysubsection{$<$strong$>$1. Fix and Synchronize the List Implementation$<$/strong$>$}\label{md_Lab_for_Phase_1_autotoc_md23}
+{\bfseries{Purpose}}\+: Ensure thread safety for shared survivor/drone lists. ~\newline
+ {\bfseries{Steps}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item Add a {\ttfamily pthread\+\_\+mutex\+\_\+t lock} to the {\ttfamily List} struct in {\ttfamily list.\+h}. ~\newline
+
+\item Initialize/destroy the mutex in {\ttfamily \mbox{\hyperlink{list_8c_a859977c69b4b32b2ae7aced05956b460}{create\+\_\+list()}}} and {\ttfamily \mbox{\hyperlink{list_8c_a8df412f5e360ce9b5b2f5a955b440ab3}{destroy()}}}. ~\newline
+
+\item Wrap all list operations ({\ttfamily add}, {\ttfamily pop}, etc.) with {\ttfamily pthread\+\_\+mutex\+\_\+lock/unlock}. ~\newline
+
+\end{DoxyItemize}
+
+{\bfseries{Code Snippet}}\+: ~\newline
+ 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\textcolor{comment}{// list.c (add function)  }}
+\DoxyCodeLine{Node* \mbox{\hyperlink{list_8c_a42442a464f9b197cf584e79c0e5a78ca}{add}}(List* list, \textcolor{keywordtype}{void}* data) \{  }
+\DoxyCodeLine{    pthread\_mutex\_lock(\&list-\/>lock);  }
+\DoxyCodeLine{    \textcolor{comment}{// ... existing logic ...  }}
+\DoxyCodeLine{    pthread\_mutex\_unlock(\&list-\/>lock);  }
+\DoxyCodeLine{    \textcolor{keywordflow}{return} node;  }
+\DoxyCodeLine{\}  }
+
+\end{DoxyCode}
+
+
+\DoxyHorRuler{0}
+\hypertarget{md_Lab_for_Phase_1_autotoc_md25}{}\doxysubsection{$<$strong$>$2. Fix Overflow/\+Underflow of the List$<$/strong$>$}\label{md_Lab_for_Phase_1_autotoc_md25}
+{\bfseries{In \mbox{\hyperlink{list_8c}{list.\+c}}, for the overflow/underflow use semaphores or condition variables.}}\hypertarget{md_Lab_for_Phase_1_autotoc_md26}{}\doxysubsection{$<$strong$>$3. Check and correct the synchronization used in the code$<$/strong$>$}\label{md_Lab_for_Phase_1_autotoc_md26}
+Implementation of the simulation is partially given. Since your {\ttfamily \mbox{\hyperlink{list_8c}{list.\+c}}} has become thread-\/safe for add, remove operations;$\ast$$\ast$ only the iterations$\ast$$\ast$ or direct access to the pointers in the list would need synchronization.\hypertarget{md_Lab_for_Phase_1_autotoc_md27}{}\doxysection{Implementation of the simulation and edits required to be done}\label{md_Lab_for_Phase_1_autotoc_md27}
+\hypertarget{md_Lab_for_Phase_1_autotoc_md28}{}\doxysubsection{Survivors}\label{md_Lab_for_Phase_1_autotoc_md28}
+Survivors are generated randomly by a thread that runs {\ttfamily survivor\+\_\+generator(void $\ast$args)}. You can change its frequence etc.\hypertarget{md_Lab_for_Phase_1_autotoc_md29}{}\doxysubsection{Drones (\+Volunteered helpers)}\label{md_Lab_for_Phase_1_autotoc_md29}
+In current code, the drones are created as separate threads. In Phase-\/2, instead of {\ttfamily drone\+\_\+fleet}, you will have client of drones.
+
+{\bfseries{Code Snippet}}\+: ~\newline
+ 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\textcolor{comment}{// Global drone fleet}}
+\DoxyCodeLine{Drone *drone\_fleet = NULL;}
+\DoxyCodeLine{\textcolor{keywordtype}{int} num\_drones = 10; \textcolor{comment}{// Default fleet size}}
+\DoxyCodeLine{}
+\DoxyCodeLine{\textcolor{keywordtype}{void} initialize\_drones() \{}
+\DoxyCodeLine{    drone\_fleet = malloc(\textcolor{keyword}{sizeof}(Drone) * num\_drones);}
+\DoxyCodeLine{    srand(time(NULL));}
+\DoxyCodeLine{}
+\DoxyCodeLine{    \textcolor{keywordflow}{for}(\textcolor{keywordtype}{int} i = 0; i < num\_drones; i++) \{}
+\DoxyCodeLine{        drone\_fleet[i].id = i;}
+\DoxyCodeLine{        drone\_fleet[i].status = IDLE;}
+\DoxyCodeLine{        drone\_fleet[i].coord.x = rand() \% map.width;}
+\DoxyCodeLine{        drone\_fleet[i].coord.y = rand() \% map.height;}
+\DoxyCodeLine{        drone\_fleet[i].target = drone\_fleet[i].coord; \textcolor{comment}{// Initial target=current position}}
+\DoxyCodeLine{        pthread\_mutex\_init(\&drone\_fleet[i].lock, NULL);}
+\DoxyCodeLine{        }
+\DoxyCodeLine{        \textcolor{comment}{// Add to global drone list}}
+\DoxyCodeLine{        pthread\_mutex\_lock(\&drones-\/>lock);}
+\DoxyCodeLine{        drones-\/>add(drones, \&drone\_fleet[i]);}
+\DoxyCodeLine{        pthread\_mutex\_unlock(\&drones-\/>lock);}
+\DoxyCodeLine{        }
+\DoxyCodeLine{        \textcolor{comment}{// Create thread}}
+\DoxyCodeLine{        pthread\_create(\&drone\_fleet[i].thread\_id, NULL, drone\_behavior, \&drone\_fleet[i]);}
+\DoxyCodeLine{    \}}
+\DoxyCodeLine{\} }
+
+\end{DoxyCode}
+
+
+\DoxyHorRuler{0}
+
+
+{\bfseries{Drone Thread Behavior}} ~\newline
+ If drone is on mission, it is flying toward the target. Otherwise it waits for a mission. In Phase2, you will implement this as a client. For this lab, you can change its behavior. For instance, {\bfseries{optional task}}\+: Instead of {\ttfamily while(1)}, you can use condition variable. If there is a task, it would wake-\/up.
+
+{\bfseries{Code Snippet}}\+: ~\newline
+ 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\textcolor{keywordtype}{void}* drone\_behavior(\textcolor{keywordtype}{void} *arg) \{}
+\DoxyCodeLine{    Drone *d = (Drone*)arg;}
+\DoxyCodeLine{    }
+\DoxyCodeLine{    \textcolor{keywordflow}{while}(1) \{}
+\DoxyCodeLine{        pthread\_mutex\_lock(\&d-\/>lock);}
+\DoxyCodeLine{        }
+\DoxyCodeLine{        \textcolor{keywordflow}{if}(d-\/>status == ON\_MISSION) \{}
+\DoxyCodeLine{            \textcolor{comment}{// Move toward target (1 cell per iteration)}}
+\DoxyCodeLine{            \textcolor{keywordflow}{if}(d-\/>coord.x < d-\/>target.x) d-\/>coord.x++;}
+\DoxyCodeLine{            \textcolor{keywordflow}{else} \textcolor{keywordflow}{if}(d-\/>coord.x > d-\/>target.x) d-\/>coord.x-\/-\/;}
+\DoxyCodeLine{            }
+\DoxyCodeLine{            \textcolor{keywordflow}{if}(d-\/>coord.y < d-\/>target.y) d-\/>coord.y++;}
+\DoxyCodeLine{            \textcolor{keywordflow}{else} \textcolor{keywordflow}{if}(d-\/>coord.y > d-\/>target.y) d-\/>coord.y-\/-\/;}
+\DoxyCodeLine{}
+\DoxyCodeLine{            \textcolor{comment}{// Check mission completion}}
+\DoxyCodeLine{            \textcolor{keywordflow}{if}(d-\/>coord.x == d-\/>target.x \&\& d-\/>coord.y == d-\/>target.y) \{}
+\DoxyCodeLine{                d-\/>status = IDLE;}
+\DoxyCodeLine{                printf(\textcolor{stringliteral}{"{}Drone \%d: Mission completed!\(\backslash\)n"{}}, d-\/>id);}
+\DoxyCodeLine{            \}}
+\DoxyCodeLine{        \}}
+\DoxyCodeLine{        }
+\DoxyCodeLine{        pthread\_mutex\_unlock(\&d-\/>lock);}
+\DoxyCodeLine{        sleep(1); \textcolor{comment}{// Update every second}}
+\DoxyCodeLine{    \}}
+\DoxyCodeLine{    \textcolor{keywordflow}{return} NULL;}
+\DoxyCodeLine{\}}
+
+\end{DoxyCode}
+
+
+\DoxyHorRuler{0}
+\hypertarget{md_Lab_for_Phase_1_autotoc_md32}{}\doxysubsection{AI Controller for Mission Assignment}\label{md_Lab_for_Phase_1_autotoc_md32}
+{\bfseries{Purpose}}\+: Assign idle drones to survivors based on proximity. ~\newline
+
+
+{\bfseries{Steps}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item Iterate through the survivor list. ~\newline
+
+\item Find the closest idle drone using Manhattan distance. ~\newline
+
+\item Update the drone’s target and status. ~\newline
+
+\end{DoxyItemize}
+
+You will also use this in Phase-\/2
+
+{\bfseries{Code Snippet}}\+: ~\newline
+ 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\textcolor{keywordtype}{void}* ai\_controller(\textcolor{keywordtype}{void} *arg) \{}
+\DoxyCodeLine{    \textcolor{keywordflow}{while} (1) \{}
+\DoxyCodeLine{        pthread\_mutex\_lock(\&survivors-\/>lock); \textcolor{comment}{// List mutex}}
+\DoxyCodeLine{        Survivor *s = survivors-\/>peek(survivors);}
+\DoxyCodeLine{        \textcolor{keywordflow}{if} (s) \{}
+\DoxyCodeLine{            pthread\_mutex\_lock(\&drones-\/>lock); \textcolor{comment}{// List mutex}}
+\DoxyCodeLine{            Drone *closest = find\_closest\_idle\_drone(s-\/>coord);}
+\DoxyCodeLine{            pthread\_mutex\_unlock(\&drones-\/>lock);}
+\DoxyCodeLine{}
+\DoxyCodeLine{            \textcolor{keywordflow}{if} (closest) \{}
+\DoxyCodeLine{                assign\_mission(closest, s-\/>coord); \textcolor{comment}{// Uses drone-\/>lock}}
+\DoxyCodeLine{                survivors-\/>pop(survivors, NULL);}
+\DoxyCodeLine{            \}}
+\DoxyCodeLine{        \}}
+\DoxyCodeLine{        pthread\_mutex\_unlock(\&survivors-\/>lock);}
+\DoxyCodeLine{        sleep(1);}
+\DoxyCodeLine{    \}}
+\DoxyCodeLine{\}}
+
+\end{DoxyCode}
+
+
+\DoxyHorRuler{0}
+\hypertarget{md_Lab_for_Phase_1_autotoc_md34}{}\doxysubsection{$<$strong$>$5. SDL Visualization$<$/strong$>$}\label{md_Lab_for_Phase_1_autotoc_md34}
+{\bfseries{Purpose}}\+: Visualize drones, survivors, and missions in real time. ~\newline
+
+
+{\bfseries{Steps}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item Update {\ttfamily view.\+c} to draw drones (blue = idle, green = on mission). ~\newline
+
+\item Draw lines between drones and their targets. ~\newline
+
+\end{DoxyItemize}
+
+The current code only draws the survivors and drones.
+
+You should change this to show
+\begin{DoxyItemize}
+\item drones target (their flying destination),
+\item survivors that are assigned drones
+\item survivors that are waiting for help
+\end{DoxyItemize}
+
+{\bfseries{Code Snippet}}\+: ~\newline
+ 
+\begin{DoxyCode}{0}
+\DoxyCodeLine{\textcolor{keywordtype}{void} draw\_drones() \{}
+\DoxyCodeLine{    \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} i = 0; i < num\_drones; i++) \{}
+\DoxyCodeLine{        pthread\_mutex\_lock(\&drone\_fleet[i].lock);}
+\DoxyCodeLine{        SDL\_Color color = (drone\_fleet[i].status == IDLE) ? BLUE : GREEN;}
+\DoxyCodeLine{        draw\_cell(drone\_fleet[i].coord.x, drone\_fleet[i].coord.y, color);}
+\DoxyCodeLine{        }
+\DoxyCodeLine{        \textcolor{comment}{// Draw mission line if on mission}}
+\DoxyCodeLine{        \textcolor{keywordflow}{if} (drone\_fleet[i].status == ON\_MISSION) \{}
+\DoxyCodeLine{            SDL\_SetRenderDrawColor(renderer, GREEN.r, GREEN.g, GREEN.b, GREEN.a);}
+\DoxyCodeLine{            SDL\_RenderDrawLine(renderer,}
+\DoxyCodeLine{                drone\_fleet[i].coord.y * CELL\_SIZE + CELL\_SIZE/2,}
+\DoxyCodeLine{                drone\_fleet[i].coord.x * CELL\_SIZE + CELL\_SIZE/2,}
+\DoxyCodeLine{                drone\_fleet[i].target.y * CELL\_SIZE + CELL\_SIZE/2,}
+\DoxyCodeLine{                drone\_fleet[i].target.x * CELL\_SIZE + CELL\_SIZE/2);}
+\DoxyCodeLine{        \}}
+\DoxyCodeLine{        pthread\_mutex\_unlock(\&drone\_fleet[i].lock);}
+\DoxyCodeLine{    \}}
+\DoxyCodeLine{\}}
+\DoxyCodeLine{}
+\DoxyCodeLine{\textcolor{keywordtype}{void} draw\_survivors() \{}
+\DoxyCodeLine{    \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} i = 0; i < map.height; i++) \{}
+\DoxyCodeLine{        \textcolor{keywordflow}{for} (\textcolor{keywordtype}{int} j = 0; j < map.width; j++) \{}
+\DoxyCodeLine{            pthread\_mutex\_lock(\&map.cells[i][j].survivors-\/>lock);}
+\DoxyCodeLine{            \textcolor{keywordflow}{if} (map.cells[i][j].survivors-\/>number\_of\_elements > 0) \{}
+\DoxyCodeLine{                draw\_cell(i, j, RED);}
+\DoxyCodeLine{            \}}
+\DoxyCodeLine{            pthread\_mutex\_unlock(\&map.cells[i][j].survivors-\/>lock);}
+\DoxyCodeLine{        \}}
+\DoxyCodeLine{    \}}
+\DoxyCodeLine{\}}
+
+\end{DoxyCode}
+
+
+\DoxyHorRuler{0}
+\hypertarget{md_Lab_for_Phase_1_autotoc_md36}{}\doxysection{$<$strong$>$\+Testing \& Debugging Tips$<$/strong$>$}\label{md_Lab_for_Phase_1_autotoc_md36}
+
+\begin{DoxyEnumerate}
+\item {\bfseries{Test Thread Safety}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item Run multiple survivor/drone generators concurrently. ~\newline
+
+\item Use {\ttfamily valgrind -\/-\/tool=helgrind} to detect race conditions. ~\newline
+
+\item E.\+g. survivors are malloced but not freed.
+\end{DoxyItemize}
+\item {\bfseries{Verify Movement Logic}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item Ensure drones reach targets within expected time (e.\+g., distance/speed). ~\newline
+
+\end{DoxyItemize}
+\item {\bfseries{Check Visualization}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item Confirm idle/active drones and mission lines render correctly. ~\newline
+
+\end{DoxyItemize}
+\end{DoxyEnumerate}
+
+\DoxyHorRuler{0}
+\hypertarget{md_Lab_for_Phase_1_autotoc_md38}{}\doxysection{$<$strong$>$\+Deliverables$<$/strong$>$}\label{md_Lab_for_Phase_1_autotoc_md38}
+
+\begin{DoxyEnumerate}
+\item {\bfseries{Code}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item Thread-\/safe {\ttfamily \mbox{\hyperlink{list_8c}{list.\+c}}/h}. ~\newline
+
+\item Multi-\/threaded drone simulation in {\ttfamily model\+: survivor.\+c, drone.\+c, ai.\+c}. ~\newline
+
+\item Updated SDL visualization in {\ttfamily view.\+c, map.\+c}. ~\newline
+
+\end{DoxyItemize}
+\item {\bfseries{Report}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item Explain synchronization strategy. ~\newline
+
+\item Analyze performance (e.\+g., missions completed per minute). ~\newline
+
+\end{DoxyItemize}
+\end{DoxyEnumerate}
+
+\DoxyHorRuler{0}
+\hypertarget{md_Lab_for_Phase_1_autotoc_md40}{}\doxysection{$<$strong$>$\+Grading Criteria$<$/strong$>$}\label{md_Lab_for_Phase_1_autotoc_md40}
+\tabulinesep=1mm
+\begin{longtabu}spread 0pt [c]{*{2}{|X[-1]}|}
+\hline
+\PBS\centering \cellcolor{\tableheadbgcolor}\textbf{ {\bfseries{Criteria}}   }&\PBS\centering \cellcolor{\tableheadbgcolor}\textbf{ {\bfseries{Weight}}    }\\\cline{1-2}
+\endfirsthead
+\hline
+\endfoot
+\hline
+\PBS\centering \cellcolor{\tableheadbgcolor}\textbf{ {\bfseries{Criteria}}   }&\PBS\centering \cellcolor{\tableheadbgcolor}\textbf{ {\bfseries{Weight}}    }\\\cline{1-2}
+\endhead
+Thread-\/safe list   &30\%    \\\cline{1-2}
+Working drone threads   &30\%    \\\cline{1-2}
+AI controller logic   &20\%    \\\cline{1-2}
+Visualization \& documentation   &20\%   \\\cline{1-2}
+\end{longtabu}
+
+
+\DoxyHorRuler{0}
+\hypertarget{md_Lab_for_Phase_1_autotoc_md42}{}\doxysection{$<$strong$>$\+Connection to Future Project Phases$<$/strong$>$}\label{md_Lab_for_Phase_1_autotoc_md42}
+
+\begin{DoxyItemize}
+\item {\bfseries{Phase 2}}\+: Replace simulated drone threads with socket-\/based clients. The synchronized lists will manage incoming drone connections and survivor requests.
+\begin{DoxyEnumerate}
+\item {\bfseries{Phase 1 (Simulator)}} ~\newline
+
+\begin{DoxyItemize}
+\item $\ast$$\ast${\ttfamily drone.\+c}$\ast$$\ast$ owns all drone-\/related logic\+: ~\newline
+
+\begin{DoxyItemize}
+\item Thread creation ~\newline
+
+\item Behavior simulation ~\newline
+
+\item Memory management ~\newline
+
+\end{DoxyItemize}
+\item $\ast$$\ast${\ttfamily controller.\+c}$\ast$$\ast$ only orchestrates high-\/level flow.
+\end{DoxyItemize}
+\item {\bfseries{Phase 2 (Client-\/\+Server Transition)}} ~\newline
+
+\begin{DoxyItemize}
+\item {\bfseries{Minimal Changes}}\+: ~\newline
+
+\begin{DoxyItemize}
+\item Replace {\ttfamily initialize\+\_\+drones()} in {\ttfamily controller.\+c} with server-\/side client acceptance. ~\newline
+
+\item {\ttfamily drone.\+c} evolves into\+: ~\newline
+
+\begin{DoxyItemize}
+\item {\bfseries{Server-\/side}}\+: {\ttfamily drone\+\_\+manager.\+c} (tracks connected drones). ~\newline
+
+\item {\bfseries{Client-\/side}}\+: {\ttfamily drone\+\_\+client.\+c} (replaces thread behavior with network ops). ~\newline
+
+\end{DoxyItemize}
+
+{\bfseries{Example Phase 2 Controller}} \`{}\`{}\`{}c // controller.\+c (Phase 2) \#include \char`\"{}drone\+\_\+manager.\+h\char`\"{} // Replaces drone.\+h
+
+int main() \{ // Initialize server (instead of drone threads) start\+\_\+drone\+\_\+server(8080);
+
+// Rest remains similar while (!quit) \{ handle\+\_\+connections(); // Accept new drones update\+\_\+simulation(); // AI controller logic draw\+\_\+map(); \} \} \`{}\`{}\`{}
+\end{DoxyItemize}
+\end{DoxyItemize}
+\end{DoxyEnumerate}
+\item {\bfseries{Phase 3}}\+: Extend the AI controller to handle network latency and drone failures. ~\newline
+ 
+\end{DoxyItemize}
