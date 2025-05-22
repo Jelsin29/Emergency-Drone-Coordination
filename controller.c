@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <unistd.h>
+#include "headers/server_throughput.h"
 
 // Global lists defined in globals.h
 List *survivors = NULL;
@@ -150,6 +151,8 @@ void update_simulation_stats()
  */
 int main()
 {
+    pthread_t monitor = start_perf_monitor("drone_server_metrics.csv");
+
     printf("Emergency Drone Coordination System - Phase 1\n");
     printf("---------------------------------------------\n");
 
@@ -263,6 +266,9 @@ int main()
     // Cleanup
     cleanup_resources();
     cleanup_survivors();
+
+    export_metrics_json("final_drone_metrics.json");
+    stop_perf_monitor(monitor);
 
     return 0;
 }

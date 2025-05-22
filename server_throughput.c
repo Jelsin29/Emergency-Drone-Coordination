@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 199309L
 #include "headers/server_throughput.h"
 
 // Global metrics instance definition
