@@ -28,6 +28,7 @@
 #include "coord.h"
 #include <time.h>
 #include <pthread.h>
+#include "list.h"
 
 // Forward declaration to avoid circular dependency
 struct list;
@@ -91,7 +92,7 @@ typedef struct drone {
  * networked client drones. Managed by the drone server and
  * accessed by the AI controller for mission assignment.
  */
-extern struct list *drones;
+extern List *drones;
 
 /**
  * @brief Total number of drones in the fleet
@@ -165,7 +166,7 @@ void* drone_server(void *arg);
  * @see update_drone_status() for mission completion handling
  */
 void *handle_drone_client(void *arg);
-
+void initialize_drones();
 /** @} */ // end of drone_server group
 
 /**

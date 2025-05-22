@@ -27,6 +27,10 @@
 #define GLOBALS_H
 
 #include "coord.h"
+#include "map.h"
+#include "drone.h"
+#include "survivor.h"
+#include "list.h"
 
 // Forward declarations to avoid circular dependencies
 struct map;
