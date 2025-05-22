@@ -1,7 +1,10 @@
+#define _POSIX_C_SOURCE 199309L
+#define _DEFAULT_SOURCE
 #include <arpa/inet.h>
 #include "headers/drone.h"
 #include "headers/globals.h"
 #include "headers/map.h"
+#include "headers/server_throughput.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>
@@ -16,6 +19,7 @@
 
 Drone my_drone = {0};
 pthread_t thread_id;
+pthread_t throughput_monitor;
 volatile int running = 1;
 int sock; // Global socket for both threads
 pthread_mutex_t sock_mutex = PTHREAD_MUTEX_INITIALIZER; // Add socket mutex
@@ -51,6 +55,10 @@ void* drone_behavior(void *arg) {
                 // Update position
                 my_drone.coord = new_pos;
                 
+                // Measure response time for status update
+                struct timespec start_time, end_time;
+                clock_gettime(CLOCK_MONOTONIC, &start_time);
+                
                 // Send a STATUS_UPDATE message to the server
                 struct json_object *status_update = json_object_new_object();
                 json_object_object_add(status_update, "type", json_object_new_string("STATUS_UPDATE"));
@@ -69,16 +77,31 @@ void* drone_behavior(void *arg) {
                 
                 // Send the update
                 const char *update_str = json_object_to_json_string(status_update);
+                size_t message_size = strlen(update_str);
+                
                 pthread_mutex_lock(&sock_mutex);
-                send(sock, update_str, strlen(update_str), 0);
+                ssize_t bytes_sent = send(sock, update_str, message_size, 0);
                 // Send a newline character to separate JSON messages
                 send(sock, "\n", 1, 0);
                 pthread_mutex_unlock(&sock_mutex);
                 
+                // Record throughput metrics
+                if (bytes_sent > 0) {
+                    perf_record_status_update(bytes_sent);
+                    
+                    // Measure and record response time
+                    clock_gettime(CLOCK_MONOTONIC, &end_time);
+                    double response_time_ms = (end_time.tv_sec - start_time.tv_sec) * 1000.0 + 
+                                             (end_time.tv_nsec - start_time.tv_nsec) / 1000000.0;
+                    perf_record_response_time(response_time_ms);
+                } else {
+                    perf_record_error();
+                }
+                
                 // Free the JSON object
                 json_object_put(status_update);
                 
-                printf("Status update sent: Position (%d, %d)\n", my_drone.coord.x, my_drone.coord.y);
+                printf("Status update sent: Position (%d, %d) - %zd bytes\n", my_drone.coord.x, my_drone.coord.y, bytes_sent);
             }
         }
 
@@ -98,6 +121,10 @@ void* drone_behavior(void *arg) {
             // Notify the server about mission completion
             printf("*** TARGET REACHED! Current=(%d,%d), Target=(%d,%d) - Preparing MISSION_COMPLETE message\n",
                   my_drone.coord.x, my_drone.coord.y, my_drone.target.x, my_drone.target.y);
+            
+            // Measure response time for mission completion
+            struct timespec start_time, end_time;
+            clock_gettime(CLOCK_MONOTONIC, &start_time);
                   
             struct json_object *mission_complete = json_object_new_object();
             json_object_object_add(mission_complete, "type", json_object_new_string("MISSION_COMPLETE"));
@@ -113,17 +140,28 @@ void* drone_behavior(void *arg) {
             json_object_object_add(mission_complete, "target_location", target_location);
 
             const char *mission_complete_str = json_object_to_json_string(mission_complete);
+            size_t message_size = strlen(mission_complete_str);
             
             pthread_mutex_lock(&sock_mutex);
-            int send_result = send(sock, mission_complete_str, strlen(mission_complete_str), 0);
+            ssize_t send_result = send(sock, mission_complete_str, message_size, 0);
             // Send a newline character to separate JSON messages
             send(sock, "\n", 1, 0);
             pthread_mutex_unlock(&sock_mutex);
             
-            if (send_result < 0) {
-                perror("Failed to send MISSION_COMPLETE message");
+            // Record throughput metrics
+            if (send_result > 0) {
+                perf_record_status_update(send_result); // Count as status update
+                
+                // Measure and record response time
+                clock_gettime(CLOCK_MONOTONIC, &end_time);
+                double response_time_ms = (end_time.tv_sec - start_time.tv_sec) * 1000.0 + 
+                                         (end_time.tv_nsec - start_time.tv_nsec) / 1000000.0;
+                perf_record_response_time(response_time_ms);
+                
+                printf("*** MISSION_COMPLETE message sent successfully (%zd bytes, %.2fms)\n", send_result, response_time_ms);
             } else {
-                printf("*** MISSION_COMPLETE message sent successfully (%d bytes)\n", send_result);
+                perror("Failed to send MISSION_COMPLETE message");
+                perf_record_error();
             }
             
             json_object_put(mission_complete);
@@ -170,10 +208,21 @@ int main()
     struct sockaddr_in server_addr;
     char buffer[BUFFER_SIZE];
 
+    printf("Drone Client Starting - Initializing Performance Monitoring...\n");
+    
+    // Start client-side performance monitoring
+    throughput_monitor = start_perf_monitor("drone_client_metrics.csv");
+    if (throughput_monitor == 0) {
+        fprintf(stderr, "Warning: Failed to start client performance monitoring\n");
+    }
+
     // Create socket
     if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
     {
         perror("Socket creation error");
+        perf_record_error();
+        export_metrics_json("client_error_metrics.json");
+        stop_perf_monitor(throughput_monitor);
         exit(EXIT_FAILURE);
     }
 
@@ -185,19 +234,27 @@ int main()
     if (inet_pton(AF_INET, SERVER_IP, &server_addr.sin_addr) <= 0)
     {
         perror("Invalid address/ Address not supported");
+        perf_record_error();
         close(sock);
+        export_metrics_json("client_error_metrics.json");
+        stop_perf_monitor(throughput_monitor);
         exit(EXIT_FAILURE);
     }
 
     // Connect to the server
+    printf("Connecting to server %s:%d...\n", SERVER_IP, SERVER_PORT);
     if (connect(sock, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
     {
         perror("Connection failed");
+        perf_record_error();
         close(sock);
+        export_metrics_json("client_error_metrics.json");
+        stop_perf_monitor(throughput_monitor);
         exit(EXIT_FAILURE);
     }
 
     printf("Connected to the rescue system server.\n");
+    perf_record_connection(1); // Record successful connection
 
     // Seed random number generator
     srand(time(NULL));
@@ -207,7 +264,6 @@ int main()
     map.width = 40;  // Example width
 
     // Set basic properties
-    // my_drone.id = id;
     my_drone.status = IDLE;
 
     // Random starting position within map boundaries
@@ -219,6 +275,10 @@ int main()
 
     // Initialize mutex
     pthread_mutex_init(&my_drone.lock, NULL);
+
+    // Measure handshake response time
+    struct timespec handshake_start, handshake_end;
+    clock_gettime(CLOCK_MONOTONIC, &handshake_start);
 
     // Create JSON object for the drone
     struct json_object *drone_info = json_object_new_object();
@@ -232,12 +292,18 @@ int main()
 
     // Convert JSON object to string and send it
     const char *json_str = json_object_to_json_string(drone_info);
+    size_t handshake_size = strlen(json_str);
     
     pthread_mutex_lock(&sock_mutex);
-    send(sock, json_str, strlen(json_str), 0);
+    ssize_t bytes_sent = send(sock, json_str, handshake_size, 0);
     pthread_mutex_unlock(&sock_mutex);
     
-    printf("Drone info sent: %s\n", json_str);
+    if (bytes_sent > 0) {
+        perf_record_status_update(bytes_sent);
+        printf("Drone info sent: %s (%zd bytes)\n", json_str, bytes_sent);
+    } else {
+        perf_record_error();
+    }
 
     // Free JSON object
     json_object_put(drone_info);
@@ -246,23 +312,37 @@ int main()
     int bytes_received = recv(sock, buffer, BUFFER_SIZE - 1, 0);
     if (bytes_received > 0) {
         buffer[bytes_received] = '\0';
-        printf("Server response: %s\n", buffer);
+        printf("Server response: %s (%d bytes)\n", buffer, bytes_received);
+        
+        // Record handshake response time
+        clock_gettime(CLOCK_MONOTONIC, &handshake_end);
+        double handshake_time = (handshake_end.tv_sec - handshake_start.tv_sec) * 1000.0 + 
+                               (handshake_end.tv_nsec - handshake_start.tv_nsec) / 1000000.0;
+        perf_record_response_time(handshake_time);
+        perf_record_status_update(bytes_received);
+        
         // Parse the response to ensure it's a HANDSHAKE_ACK
         struct json_object *response = json_tokener_parse(buffer);
         struct json_object *type;
         if (json_object_object_get_ex(response, "type", &type) &&
             strcmp(json_object_get_string(type), "HANDSHAKE_ACK") == 0) {
-            printf("Handshake acknowledged by server.\n");
+            printf("Handshake acknowledged by server (%.2fms response time).\n", handshake_time);
         } else {
             fprintf(stderr, "Unexpected response from server. Exiting.\n");
+            perf_record_error();
             json_object_put(response);
             close(sock);
+            export_metrics_json("client_error_metrics.json");
+            stop_perf_monitor(throughput_monitor);
             exit(EXIT_FAILURE);
         }
         json_object_put(response);
     } else {
         perror("Failed to receive HANDSHAKE_ACK");
+        perf_record_error();
         close(sock);
+        export_metrics_json("client_error_metrics.json");
+        stop_perf_monitor(throughput_monitor);
         exit(EXIT_FAILURE);
     }
 
@@ -277,6 +357,7 @@ int main()
     int result = pthread_create(&thread_id, NULL, &drone_behavior, NULL);
     if (result != 0) {
         fprintf(stderr, "Error creating thread %s\n", strerror(result));
+        perf_record_error();
     }
 
     printf("Starting main message loop...\n");
@@ -290,7 +371,8 @@ int main()
         bytes_received = recv(sock, buffer, BUFFER_SIZE - 1, 0);
         if (bytes_received > 0) {
             buffer[bytes_received] = '\0';
-            printf("Message from server: %s\n", buffer);
+            printf("Message from server: %s (%d bytes)\n", buffer, bytes_received);
+            perf_record_status_update(bytes_received);
 
             // Parse the server message
             struct json_object *message = json_tokener_parse(buffer);
@@ -299,16 +381,33 @@ int main()
                 const char *message_type = json_object_get_string(type);
 
                 if (strcmp(message_type, "HEARTBEAT") == 0) {
+                    // Measure heartbeat response time
+                    struct timespec hb_start, hb_end;
+                    clock_gettime(CLOCK_MONOTONIC, &hb_start);
+                    
                     // Respond to heartbeat
                     struct json_object *heartbeat_response = json_object_new_object();
                     json_object_object_add(heartbeat_response, "type", json_object_new_string("HEARTBEAT_RESPONSE"));
                     json_object_object_add(heartbeat_response, "drone_id", json_object_new_int(my_drone.id));
                     json_object_object_add(heartbeat_response, "timestamp", json_object_new_int(time(NULL)));
                     const char *response_str = json_object_to_json_string(heartbeat_response);
+                    size_t response_size = strlen(response_str);
                     
                     pthread_mutex_lock(&sock_mutex);
-                    send(sock, response_str, strlen(response_str), 0);
+                    ssize_t hb_bytes_sent = send(sock, response_str, response_size, 0);
                     pthread_mutex_unlock(&sock_mutex);
+                    
+                    if (hb_bytes_sent > 0) {
+                        perf_record_heartbeat(hb_bytes_sent);
+                        
+                        // Record heartbeat response time
+                        clock_gettime(CLOCK_MONOTONIC, &hb_end);
+                        double hb_time = (hb_end.tv_sec - hb_start.tv_sec) * 1000.0 + 
+                                        (hb_end.tv_nsec - hb_start.tv_nsec) / 1000000.0;
+                        perf_record_response_time(hb_time);
+                    } else {
+                        perf_record_error();
+                    }
                     
                     json_object_put(heartbeat_response);
                 } else if (strcmp(message_type, "ASSIGN_MISSION") == 0) {
@@ -337,12 +436,16 @@ int main()
             json_object_put(message);
         } else if (bytes_received == 0) {
             printf("Server disconnected.\n");
+            perf_record_connection(0); // Record disconnection
             break;
         } else {
             perror("Error receiving message from server");
+            perf_record_error();
             break;
         }
     }
+
+    printf("Client shutting down - finalizing metrics...\n");
 
     // Wait for the thread to finish
     running = 0; // Signal the thread to exit
@@ -351,7 +454,12 @@ int main()
     // Cleanup resources
     pthread_mutex_destroy(&my_drone.lock);
     close(sock);
+    
+    // Record final disconnection and export metrics
+    perf_record_connection(0);
+    export_metrics_json("final_client_metrics.json");
+    stop_perf_monitor(throughput_monitor);
 
+    printf("Drone client shutdown complete.\n");
     return 0;
 }
-

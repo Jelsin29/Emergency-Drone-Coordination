@@ -1,4 +1,6 @@
+#define _POSIX_C_SOURCE 199309L
 #include "headers/ai.h"
+#include "headers/server_throughput.h"
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,8 +8,8 @@
 #include <time.h>
 #include <string.h>
 #include <pthread.h>
-#include <json-c/json.h> // Add this include for json_object_put and other JSON functions
-#include <sys/socket.h>  // Add this for socket functions like send()
+#include <json-c/json.h>
+#include <sys/socket.h>
 
 /**
  * Calculate Manhattan distance between two coordinates
@@ -30,8 +32,13 @@ void assign_mission(Drone *drone, int survivor_index)
     if (!drone || survivor_index < 0 || survivor_index >= num_survivors)
     {
         fprintf(stderr, "Invalid drone or survivor index in assign_mission\n");
+        perf_record_error();
         return;
     }
+
+    // Measure mission assignment response time
+    struct timespec start_time, end_time;
+    clock_gettime(CLOCK_MONOTONIC, &start_time);
 
     // Lock both drone and survivor mutex to prevent race conditions
     pthread_mutex_lock(&drone->lock);
@@ -81,16 +88,54 @@ void assign_mission(Drone *drone, int survivor_index)
 
             // Send the mission to the drone client
             const char *mission_str = json_object_to_json_string(mission);
-            ssize_t bytes_sent = send(drone->socket, mission_str, strlen(mission_str), 0);
+            size_t mission_size = strlen(mission_str);
+            ssize_t bytes_sent = send(drone->socket, mission_str, mission_size, 0);
 
-            if (bytes_sent < 0)
+            if (bytes_sent > 0)
+            {
+                perf_record_mission_assigned(bytes_sent);
+                
+                // Record mission assignment response time
+                clock_gettime(CLOCK_MONOTONIC, &end_time);
+                double response_time = (end_time.tv_sec - start_time.tv_sec) * 1000.0 + 
+                                      (end_time.tv_nsec - start_time.tv_nsec) / 1000000.0;
+                perf_record_response_time(response_time);
+                
+                printf("Mission assigned to drone %d for survivor %d (%zd bytes, %.2fms)\n", 
+                       drone->id, survivor_index, bytes_sent, response_time);
+            }
+            else
             {
                 perror("Failed to send mission assignment");
+                perf_record_error();
+                
+                // Rollback the status changes if sending failed
+                drone->status = IDLE;
+                survivor_array[survivor_index].status = 0;
             }
 
             // Free the JSON object
             json_object_put(mission);
         }
+        else
+        {
+            // For local drones (not networked), just record the assignment
+            clock_gettime(CLOCK_MONOTONIC, &end_time);
+            double response_time = (end_time.tv_sec - start_time.tv_sec) * 1000.0 + 
+                                  (end_time.tv_nsec - start_time.tv_nsec) / 1000000.0;
+            perf_record_response_time(response_time);
+            
+            printf("Local mission assigned to drone %d for survivor %d (%.2fms)\n", 
+                   drone->id, survivor_index, response_time);
+        }
+    }
+    else
+    {
+        // Mission assignment failed - record as error
+        perf_record_error();
+        printf("Failed to assign mission: drone %d status=%d, survivor %d status=%d\n",
+               drone->id, drone->status, survivor_index, 
+               survivor_index < num_survivors ? survivor_array[survivor_index].status : -1);
     }
 
     // Unlock mutexes
@@ -108,6 +153,7 @@ Drone *find_closest_idle_drone(int survivor_index)
     if (survivor_index < 0 || survivor_index >= num_survivors)
     {
         fprintf(stderr, "Invalid survivor index in find_closest_idle_drone\n");
+        perf_record_error();
         return NULL;
     }
 
@@ -159,6 +205,7 @@ int find_closest_waiting_survivor(Drone *drone)
     if (!drone)
     {
         fprintf(stderr, "Invalid drone pointer in find_closest_waiting_survivor\n");
+        perf_record_error();
         return -1;
     }
 
@@ -184,7 +231,6 @@ int find_closest_waiting_survivor(Drone *drone)
 
             if (dist < min_distance)
             {
-                
                 min_distance = dist;
                 closest_survivor_index = i;
             }
@@ -209,7 +255,7 @@ void *drone_centric_ai_controller(void *args)
     // Give the system time to initialize
     sleep(3);
 
-    printf("Starting drone-centric AI controller...\n");
+    printf("Starting drone-centric AI controller with throughput monitoring...\n");
     
     // Debug: Count how many survivors and drones we have at the start
     pthread_mutex_lock(&drones->lock);
@@ -223,9 +269,18 @@ void *drone_centric_ai_controller(void *args)
     printf("AI Controller: Initial count - Drones: %d, Survivors: %d\n", 
            initial_drone_count, initial_survivor_count);
 
+    int ai_cycle_count = 0;
+
     while (1)
     {
+        ai_cycle_count++;
         int missions_assigned = 0;
+        
+        // Measure AI processing time every 10 cycles
+        struct timespec ai_start, ai_end;
+        if (ai_cycle_count % 10 == 0) {
+            clock_gettime(CLOCK_MONOTONIC, &ai_start);
+        }
         
         // Debug: Count survivors that are waiting for help
         int waiting_survivors = 0;
@@ -296,6 +351,19 @@ void *drone_centric_ai_controller(void *args)
 
         pthread_mutex_unlock(&drones->lock);
 
+        // Record AI processing performance every 10 cycles
+        if (ai_cycle_count % 10 == 0) {
+            clock_gettime(CLOCK_MONOTONIC, &ai_end);
+            double ai_processing_time = (ai_end.tv_sec - ai_start.tv_sec) * 1000.0 + 
+                                       (ai_end.tv_nsec - ai_start.tv_nsec) / 1000000.0;
+            perf_record_response_time(ai_processing_time);
+            
+            if (missions_assigned > 0 || (idle_drone_count > 0 && waiting_survivors > 0)) {
+                printf("AI cycle %d: Assigned %d missions in %.2fms\n", 
+                       ai_cycle_count, missions_assigned, ai_processing_time);
+            }
+        }
+
         // Sleep to avoid excessive CPU usage
         sleep(1);
     }
@@ -316,8 +384,18 @@ void *ai_controller(void *args)
     // Give the system time to initialize
     sleep(3);
 
+    printf("Starting survivor-centric AI controller with throughput monitoring...\n");
+    
+    int ai_cycle_count = 0;
+
     while (1)
     {
+        ai_cycle_count++;
+        
+        // Measure AI processing time
+        struct timespec ai_start, ai_end;
+        clock_gettime(CLOCK_MONOTONIC, &ai_start);
+
         // Scan through all survivors to find those waiting for help
         pthread_mutex_lock(&survivors_mutex);
         int current_num_survivors = num_survivors;
@@ -369,7 +447,6 @@ void *ai_controller(void *args)
             {
                 if (d->coord.x == d->target.x && d->coord.y == d->target.y)
                 {
-
                     // Find which survivor this drone was helping
                     pthread_mutex_lock(&survivors_mutex);
                     for (int j = 0; j < num_survivors; j++)
@@ -378,7 +455,6 @@ void *ai_controller(void *args)
                             survivor_array[j].coord.x == d->target.x &&
                             survivor_array[j].coord.y == d->target.y)
                         {
-
                             // Mark survivor as rescued
                             survivor_array[j].status = 2; // 2 = rescued (won't be drawn)
 
@@ -392,6 +468,9 @@ void *ai_controller(void *args)
                             // Reset drone to idle
                             d->status = IDLE;
 
+                            printf("AI detected mission completion: Drone %d rescued survivor %d\n", 
+                                   d->id, j);
+
                             break;
                         }
                     }
@@ -404,6 +483,18 @@ void *ai_controller(void *args)
         }
 
         pthread_mutex_unlock(&drones->lock);
+
+        // Record AI processing time
+        clock_gettime(CLOCK_MONOTONIC, &ai_end);
+        double ai_processing_time = (ai_end.tv_sec - ai_start.tv_sec) * 1000.0 + 
+                                   (ai_end.tv_nsec - ai_start.tv_nsec) / 1000000.0;
+        perf_record_response_time(ai_processing_time);
+
+        // Log AI performance every 10 cycles
+        if (ai_cycle_count % 10 == 0) {
+            printf("AI cycle %d: Assigned %d missions, completed %d missions in %.2fms\n", 
+                   ai_cycle_count, missions_assigned, missions_completed, ai_processing_time);
+        }
 
         // Sleep to avoid excessive CPU usage
         sleep(1);

@@ -5,11 +5,11 @@
 #include "headers/ai.h"
 #include "headers/list.h"
 #include "headers/view.h"
+#include "headers/server_throughput.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
 #include <unistd.h>
-#include "headers/server_throughput.h"
 
 // Global lists defined in globals.h
 List *survivors = NULL;
@@ -20,6 +20,9 @@ List *drones = NULL;
 pthread_t survivor_thread;
 pthread_t drone_server_thread;
 pthread_t ai_thread;
+
+// Throughput monitoring thread
+pthread_t throughput_monitor;
 
 // Graceful shutdown flag
 volatile int running = 1;
@@ -51,6 +54,7 @@ void initialize_lists()
     if (!survivors)
     {
         fprintf(stderr, "Failed to create survivors list\n");
+        perf_record_error();
         exit(EXIT_FAILURE);
     }
 
@@ -58,6 +62,7 @@ void initialize_lists()
     if (!helpedsurvivors)
     {
         fprintf(stderr, "Failed to create helpedsurvivors list\n");
+        perf_record_error();
         exit(EXIT_FAILURE);
     }
 
@@ -65,6 +70,7 @@ void initialize_lists()
     if (!drones)
     {
         fprintf(stderr, "Failed to create drones list\n");
+        perf_record_error();
         exit(EXIT_FAILURE);
     }
 }
@@ -151,10 +157,15 @@ void update_simulation_stats()
  */
 int main()
 {
-    pthread_t monitor = start_perf_monitor("drone_server_metrics.csv");
-
     printf("Emergency Drone Coordination System - Phase 1\n");
     printf("---------------------------------------------\n");
+
+    // Initialize performance monitoring with CSV logging
+    throughput_monitor = start_perf_monitor("drone_server_metrics.csv");
+    if (throughput_monitor == 0) {
+        fprintf(stderr, "Failed to start performance monitoring\n");
+        return 1;
+    }
 
     // Set up signal handler for Ctrl+C
     signal(SIGINT, handle_signal);
@@ -172,8 +183,11 @@ int main()
     if (init_sdl_window() != 0)
     {
         fprintf(stderr, "Failed to initialize SDL window\n");
+        perf_record_error();
         cleanup_resources();
         cleanup_survivors();
+        export_metrics_json("error_final_drone_metrics.json");
+        stop_perf_monitor(throughput_monitor);
         return 1;
     }
 
@@ -188,8 +202,11 @@ int main()
     if (result != 0)
     {
         fprintf(stderr, "Error creating drone server thread: %d\n", result);
+        perf_record_error();
         cleanup_resources();
         cleanup_survivors();
+        export_metrics_json("error_final_drone_metrics.json");
+        stop_perf_monitor(throughput_monitor);
         return 1;
     }
 
@@ -198,8 +215,11 @@ int main()
     if (survivor_result != 0)
     {
         fprintf(stderr, "Error creating survivor thread: %d\n", survivor_result);
+        perf_record_error();
         cleanup_resources();
         cleanup_survivors();
+        export_metrics_json("error_final_drone_metrics.json");
+        stop_perf_monitor(throughput_monitor);
         return 1;
     }
 
@@ -208,14 +228,19 @@ int main()
     if (ai_result != 0)
     {
         fprintf(stderr, "Error creating AI controller thread: %d\n", ai_result);
+        perf_record_error();
         cleanup_resources();
         cleanup_survivors();
+        export_metrics_json("error_final_drone_metrics.json");
+        stop_perf_monitor(throughput_monitor);
         return 1;
     }
 
     // Start main rendering loop
     int frame_count = 0;
     running = 1;
+
+    printf("Main simulation loop started - monitoring server throughput...\n");
 
     while (running)
     {
@@ -241,10 +266,15 @@ int main()
         // Draw the info panel (will use the updated stats)
         draw_info_panel();
 
-        // Print statistics every 50 frames
+        // Print statistics every 50 frames (with throughput info)
         if (frame_count % 50 == 0) {
             printf("Stats: Waiting: %d, Being Helped: %d, Rescued: %d, Drones: Idle=%d, On Mission=%d\n",
                    waiting_count, helped_count, rescued_count, idle_drones, mission_drones);
+            
+            // Log current performance metrics every 100 frames
+            if (frame_count % 100 == 0) {
+                log_perf_metrics();
+            }
         }
 
         // Present the frame
@@ -255,6 +285,8 @@ int main()
 
         frame_count++;
     }
+
+    printf("Shutting down system - finalizing performance metrics...\n");
 
     // Cancel threads
     pthread_cancel(ai_thread);
@@ -267,8 +299,11 @@ int main()
     cleanup_resources();
     cleanup_survivors();
 
+    // Export final performance metrics
+    printf("Exporting final performance metrics...\n");
     export_metrics_json("final_drone_metrics.json");
-    stop_perf_monitor(monitor);
+    stop_perf_monitor(throughput_monitor);
 
+    printf("System shutdown complete.\n");
     return 0;
 }
