@@ -1,0 +1,228 @@
+\hypertarget{list_8c}{}\doxysection{list.\+c File Reference}
+\label{list_8c}\index{list.c@{list.c}}
+
+
+a simple doubly linked list stored in an array(contiguous memory). this program is written for educational purposes and may include some bugs.  
+
+
+{\ttfamily \#include \char`\"{}headers/list.\+h\char`\"{}}\newline
+{\ttfamily \#include $<$stdio.\+h$>$}\newline
+{\ttfamily \#include $<$stdlib.\+h$>$}\newline
+{\ttfamily \#include $<$string.\+h$>$}\newline
+{\ttfamily \#include $<$semaphore.\+h$>$}\newline
+Include dependency graph for list.\+c\+:
+\nopagebreak
+\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[width=350pt]{list_8c__incl}
+\end{center}
+\end{figure}
+\doxysubsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+List $\ast$ \mbox{\hyperlink{list_8c_a859977c69b4b32b2ae7aced05956b460}{create\+\_\+list}} (size\+\_\+t datasize, int capacity)
+\begin{DoxyCompactList}\small\item\em Create a list object, allocates new memory for list, and sets its data members. \end{DoxyCompactList}\item 
+Node $\ast$ \mbox{\hyperlink{list_8c_a42442a464f9b197cf584e79c0e5a78ca}{add}} (List $\ast$list, void $\ast$data)
+\begin{DoxyCompactList}\small\item\em find an unoccupied node in the array, and makes a node with the given data and ADDS it to the HEAD of the list \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{list_8c_a2ee2f78c03c5de5a14bcf7a6f0e528d0}{removedata}} (List $\ast$list, void $\ast$data)
+\begin{DoxyCompactList}\small\item\em finds the node with the value same as the mem pointed by data and removes that node. it returns temp-\/$>$node \end{DoxyCompactList}\item 
+void $\ast$ \mbox{\hyperlink{list_8c_a59a86eb5ecd3f1810a1a97302f3b1d95}{pop}} (List $\ast$list, void $\ast$dest)
+\begin{DoxyCompactList}\small\item\em removes the node from list-\/$>$head, and copies its data into dest, also returns it. \end{DoxyCompactList}\item 
+void $\ast$ \mbox{\hyperlink{list_8c_a35b08f43980e977efebabae16892eef6}{peek}} (List $\ast$list)
+\begin{DoxyCompactList}\small\item\em returns the data stored in the head of the list \end{DoxyCompactList}\item 
+int \mbox{\hyperlink{list_8c_aabe29374d2b7f4f5242cd29c78c9e08b}{removenode}} (List $\ast$list, Node $\ast$node)
+\begin{DoxyCompactList}\small\item\em removes the given node from the list, it returns removed node. \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{list_8c_a8df412f5e360ce9b5b2f5a955b440ab3}{destroy}} (List $\ast$list)
+\begin{DoxyCompactList}\small\item\em deletes everything \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{list_8c_abbae67129c7951fc7d09b062e6e7285c}{printlist}} (List $\ast$list, void($\ast$print)(void $\ast$))
+\begin{DoxyCompactList}\small\item\em prints list starting from head \end{DoxyCompactList}\item 
+void \mbox{\hyperlink{list_8c_a0207e8ca6d874a9d7c8e6a1f9aa34d46}{printlistfromtail}} (List $\ast$list, void($\ast$print)(void $\ast$))
+\begin{DoxyCompactList}\small\item\em print list starting from tail \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\doxysubsection{Detailed Description}
+a simple doubly linked list stored in an array(contiguous memory). this program is written for educational purposes and may include some bugs. 
+
+\begin{DoxyAuthor}{Author}
+adaskin 
+\end{DoxyAuthor}
+\begin{DoxyVersion}{Version}
+0.\+2 
+\end{DoxyVersion}
+\begin{DoxyDate}{Date}
+2024-\/05-\/19
+\end{DoxyDate}
+\begin{DoxyCopyright}{Copyright}
+Copyright (c) 2024 
+\end{DoxyCopyright}
+
+
+\doxysubsection{Function Documentation}
+\mbox{\Hypertarget{list_8c_a42442a464f9b197cf584e79c0e5a78ca}\label{list_8c_a42442a464f9b197cf584e79c0e5a78ca}} 
+\index{list.c@{list.c}!add@{add}}
+\index{add@{add}!list.c@{list.c}}
+\doxysubsubsection{\texorpdfstring{add()}{add()}}
+{\footnotesize\ttfamily Node$\ast$ add (\begin{DoxyParamCaption}\item[{List $\ast$}]{list,  }\item[{void $\ast$}]{data }\end{DoxyParamCaption})}
+
+
+
+find an unoccupied node in the array, and makes a node with the given data and ADDS it to the HEAD of the list 
+
+
+\begin{DoxyParams}{Parameters}
+{\em list} & \\
+\hline
+{\em data} & a data addrress, its size is determined from list-\/$>$datasize \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+$\ast$ find,$\ast$ 
+\end{DoxyReturn}
+\mbox{\Hypertarget{list_8c_a859977c69b4b32b2ae7aced05956b460}\label{list_8c_a859977c69b4b32b2ae7aced05956b460}} 
+\index{list.c@{list.c}!create\_list@{create\_list}}
+\index{create\_list@{create\_list}!list.c@{list.c}}
+\doxysubsubsection{\texorpdfstring{create\_list()}{create\_list()}}
+{\footnotesize\ttfamily List$\ast$ create\+\_\+list (\begin{DoxyParamCaption}\item[{size\+\_\+t}]{datasize,  }\item[{int}]{capacity }\end{DoxyParamCaption})}
+
+
+
+Create a list object, allocates new memory for list, and sets its data members. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em datasize} & size of data in each node \\
+\hline
+{\em capacity} & maximum number of nodes can be stored in this list \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+List$\ast$ 
+\end{DoxyReturn}
+\mbox{\Hypertarget{list_8c_a8df412f5e360ce9b5b2f5a955b440ab3}\label{list_8c_a8df412f5e360ce9b5b2f5a955b440ab3}} 
+\index{list.c@{list.c}!destroy@{destroy}}
+\index{destroy@{destroy}!list.c@{list.c}}
+\doxysubsubsection{\texorpdfstring{destroy()}{destroy()}}
+{\footnotesize\ttfamily void destroy (\begin{DoxyParamCaption}\item[{List $\ast$}]{list }\end{DoxyParamCaption})}
+
+
+
+deletes everything 
+
+
+\begin{DoxyParams}{Parameters}
+{\em list} & \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{list_8c_a35b08f43980e977efebabae16892eef6}\label{list_8c_a35b08f43980e977efebabae16892eef6}} 
+\index{list.c@{list.c}!peek@{peek}}
+\index{peek@{peek}!list.c@{list.c}}
+\doxysubsubsection{\texorpdfstring{peek()}{peek()}}
+{\footnotesize\ttfamily void$\ast$ peek (\begin{DoxyParamCaption}\item[{List $\ast$}]{list }\end{DoxyParamCaption})}
+
+
+
+returns the data stored in the head of the list 
+
+
+\begin{DoxyParams}{Parameters}
+{\em list} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+void$\ast$\+: returns the address of head-\/$>$data 
+\end{DoxyReturn}
+\mbox{\Hypertarget{list_8c_a59a86eb5ecd3f1810a1a97302f3b1d95}\label{list_8c_a59a86eb5ecd3f1810a1a97302f3b1d95}} 
+\index{list.c@{list.c}!pop@{pop}}
+\index{pop@{pop}!list.c@{list.c}}
+\doxysubsubsection{\texorpdfstring{pop()}{pop()}}
+{\footnotesize\ttfamily void$\ast$ pop (\begin{DoxyParamCaption}\item[{List $\ast$}]{list,  }\item[{void $\ast$}]{dest }\end{DoxyParamCaption})}
+
+
+
+removes the node from list-\/$>$head, and copies its data into dest, also returns it. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em list} & \\
+\hline
+{\em dest} & address to cpy data \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+void$\ast$\+: if there is data, it returns address of dest; else it returns NULL. 
+\end{DoxyReturn}
+\mbox{\Hypertarget{list_8c_abbae67129c7951fc7d09b062e6e7285c}\label{list_8c_abbae67129c7951fc7d09b062e6e7285c}} 
+\index{list.c@{list.c}!printlist@{printlist}}
+\index{printlist@{printlist}!list.c@{list.c}}
+\doxysubsubsection{\texorpdfstring{printlist()}{printlist()}}
+{\footnotesize\ttfamily void printlist (\begin{DoxyParamCaption}\item[{List $\ast$}]{list,  }\item[{void($\ast$)(void $\ast$)}]{print }\end{DoxyParamCaption})}
+
+
+
+prints list starting from head 
+
+
+\begin{DoxyParams}{Parameters}
+{\em list} & \\
+\hline
+{\em print} & aprint function for the object data. \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{list_8c_a0207e8ca6d874a9d7c8e6a1f9aa34d46}\label{list_8c_a0207e8ca6d874a9d7c8e6a1f9aa34d46}} 
+\index{list.c@{list.c}!printlistfromtail@{printlistfromtail}}
+\index{printlistfromtail@{printlistfromtail}!list.c@{list.c}}
+\doxysubsubsection{\texorpdfstring{printlistfromtail()}{printlistfromtail()}}
+{\footnotesize\ttfamily void printlistfromtail (\begin{DoxyParamCaption}\item[{List $\ast$}]{list,  }\item[{void($\ast$)(void $\ast$)}]{print }\end{DoxyParamCaption})}
+
+
+
+print list starting from tail 
+
+
+\begin{DoxyParams}{Parameters}
+{\em list} & \\
+\hline
+{\em print} & print function \\
+\hline
+\end{DoxyParams}
+\mbox{\Hypertarget{list_8c_a2ee2f78c03c5de5a14bcf7a6f0e528d0}\label{list_8c_a2ee2f78c03c5de5a14bcf7a6f0e528d0}} 
+\index{list.c@{list.c}!removedata@{removedata}}
+\index{removedata@{removedata}!list.c@{list.c}}
+\doxysubsubsection{\texorpdfstring{removedata()}{removedata()}}
+{\footnotesize\ttfamily int removedata (\begin{DoxyParamCaption}\item[{List $\ast$}]{list,  }\item[{void $\ast$}]{data }\end{DoxyParamCaption})}
+
+
+
+finds the node with the value same as the mem pointed by data and removes that node. it returns temp-\/$>$node 
+
+
+\begin{DoxyParams}{Parameters}
+{\em list} & \\
+\hline
+{\em data} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+int\+: in success, it returns 0; if not found it returns 1. 
+\end{DoxyReturn}
+\mbox{\Hypertarget{list_8c_aabe29374d2b7f4f5242cd29c78c9e08b}\label{list_8c_aabe29374d2b7f4f5242cd29c78c9e08b}} 
+\index{list.c@{list.c}!removenode@{removenode}}
+\index{removenode@{removenode}!list.c@{list.c}}
+\doxysubsubsection{\texorpdfstring{removenode()}{removenode()}}
+{\footnotesize\ttfamily int removenode (\begin{DoxyParamCaption}\item[{List $\ast$}]{list,  }\item[{Node $\ast$}]{node }\end{DoxyParamCaption})}
+
+
+
+removes the given node from the list, it returns removed node. 
+
+
+\begin{DoxyParams}{Parameters}
+{\em list} & \\
+\hline
+{\em node} & \\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+int\+: in sucess, it returns 0; if node not found, it returns 1. 
+\end{DoxyReturn}

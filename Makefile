@@ -16,7 +16,7 @@ endif
 JSON_FLAGS = -ljson-c
 
 # Source files
-SRC = controller.c list.c map.c drone.c survivor.c ai.c view.c
+SRC = controller.c list.c map.c drone.c survivor.c ai.c view.c server_throughput.c
 OBJ = $(SRC:.c=.o)
 
 # Test source files
@@ -34,8 +34,11 @@ MULTI_DRONE_TEST = tests/multi_drone_test
 # Client drone executable
 CLIENT_DRONE = drone_client
 
+# Server throughput test executable
+SERVER_THROUGHPUT_TEST = tests/server_throughput_test
+
 # Default target
-all: $(MAIN) $(LIST_TEST) $(SDL_TEST) $(CLIENT_DRONE) $(MULTI_DRONE_TEST)
+all: $(MAIN) $(LIST_TEST) $(SDL_TEST) $(CLIENT_DRONE) $(MULTI_DRONE_TEST) $(SERVER_THROUGHPUT_TEST)
 
 # Main program
 $(MAIN): $(OBJ)
@@ -53,12 +56,16 @@ $(SDL_TEST): tests/sdltest.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(SDL_FLAGS)
 
 # Client drone program
-$(CLIENT_DRONE): clientDrone.o map.o list.o
+$(CLIENT_DRONE): clientDrone.o map.o list.o server_throughput.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(JSON_FLAGS)
 
 # Multi drone test program
-$(MULTI_DRONE_TEST): tests/multi_drone_test.c
+$(MULTI_DRONE_TEST): tests/multi_drone_test.c server_throughput.o
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(JSON_FLAGS)
+
+# Server throughput test program
+$(SERVER_THROUGHPUT_TEST): tests/server_throughput_test.c server_throughput.o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 # Run the simulator
 run: $(MAIN)
@@ -80,6 +87,10 @@ run_client: $(CLIENT_DRONE)
 run_multi_drone: $(MULTI_DRONE_TEST)
 	./$(MULTI_DRONE_TEST)
 
+# Run server throughput test
+test_throughput: $(SERVER_THROUGHPUT_TEST)
+	./$(SERVER_THROUGHPUT_TEST)
+
 # Run Valgrind on main program
 valgrind_main: $(MAIN)
 	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./$(MAIN)
@@ -96,23 +107,28 @@ valgrind_sdl: $(SDL_TEST)
 valgrind_multi_drone: $(MULTI_DRONE_TEST)
 	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./$(MULTI_DRONE_TEST)
 
+# Run Valgrind on server throughput test
+valgrind_throughput: $(SERVER_THROUGHPUT_TEST)
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./$(SERVER_THROUGHPUT_TEST)
+
 # Run Valgrind on all
-valgrind_all: valgrind_main valgrind_list valgrind_sdl valgrind_multi_drone
+valgrind_all: valgrind_main valgrind_list valgrind_sdl valgrind_multi_drone valgrind_throughput
 
 # Clean up
 clean:
-	rm -f $(MAIN) $(OBJ) $(LIST_TEST) $(SDL_TEST) $(CLIENT_DRONE) $(MULTI_DRONE_TEST) clientDrone.o tests/*.o
+	rm -f $(MAIN) $(OBJ) $(LIST_TEST) $(SDL_TEST) $(CLIENT_DRONE) $(MULTI_DRONE_TEST) $(SERVER_THROUGHPUT_TEST) clientDrone.o tests/*.o *.csv *.json
 
 # Dependencies
-controller.o: controller.c headers/globals.h headers/map.h headers/drone.h headers/survivor.h headers/ai.h headers/list.h headers/view.h
+controller.o: controller.c headers/globals.h headers/map.h headers/drone.h headers/survivor.h headers/ai.h headers/list.h headers/view.h headers/server_throughput.h
 list.o: list.c headers/list.h
 map.o: map.c headers/map.h headers/list.h
 drone.o: drone.c headers/drone.h headers/globals.h
 survivor.o: survivor.c headers/survivor.h headers/globals.h headers/map.h
 ai.o: ai.c headers/ai.h headers/drone.h headers/survivor.h
 view.o: view.c headers/view.h headers/drone.h headers/map.h headers/survivor.h
+server_throughput.o: server_throughput.c headers/server_throughput.h
 tests/listtest.o: tests/listtest.c headers/list.h headers/survivor.h
 tests/sdltest.o: tests/sdltest.c
-clientDrone.o: clientDrone.c headers/drone.h headers/globals.h headers/map.h
+clientDrone.o: clientDrone.c headers/drone.h headers/globals.h headers/map.h headers/server_throughput.h
 
-.PHONY: all clean run test_list test_sdl run_client run_multi_drone valgrind_main valgrind_list valgrind_sdl valgrind_multi_drone valgrind_all
+.PHONY: all clean run test_list test_sdl run_client run_multi_drone test_throughput valgrind_main valgrind_list valgrind_sdl valgrind_multi_drone valgrind_throughput valgrind_all

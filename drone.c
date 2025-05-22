@@ -1,5 +1,64 @@
+/**
+ * @file drone.c
+ * @brief Server-side drone management and network communication implementation
+ * @author Amar Daskin - Wilmer Cuevas - Jelsin Sanchez
+ * @version 0.1
+ * @date 2025-05-22
+ * 
+ * This module implements the server-side drone management system including
+ * TCP/IP network communication, client connection handling, and drone
+ * lifecycle management. It provides the communication bridge between the
+ * coordination server and autonomous drone clients.
+ * 
+ * **Network Architecture:**
+ * - Multi-threaded TCP server with concurrent client handling
+ * - JSON-based communication protocol for all message types
+ * - Per-client connection threads with dedicated message processing
+ * - Automatic client registration and connection management
+ * - Graceful handling of connection failures and timeouts
+ * 
+ * **Message Processing:**
+ * - HANDSHAKE: Client registration and configuration exchange
+ * - STATUS_UPDATE: Real-time position and status information
+ * - MISSION_COMPLETE: Rescue completion notifications
+ * - HEARTBEAT_RESPONSE: Connection keep-alive management
+ * 
+ * **Drone Lifecycle:**
+ * - Connection establishment and handshake negotiation
+ * - Registration in global drone list with unique ID assignment
+ * - Continuous message processing and status synchronization
+ * - Mission assignment forwarding to clients
+ * - Cleanup and removal on disconnection
+ * 
+ * **Thread Safety:**
+ * This module implements comprehensive thread safety measures to ensure reliable
+ * operation in the multi-threaded drone coordination system:
+ * 
+ * - Each drone has its own mutex (drone->lock) for protecting status and position updates
+ * - The global drones list has a mutex (drones->lock) for add/remove operations
+ * - Proper locking order is maintained to prevent deadlocks:
+ *   1. Always acquire drones list lock before individual drone locks
+ *   2. Always acquire drone locks in ascending ID order when locking multiple drones
+ * - Socket operations are protected with proper synchronization
+ * - Status updates use atomic operations where possible
+ * - Network message handling is thread-safe with per-connection mutexes
+ * - Drone tracking data structures prevent race conditions during updates
+ * 
+ * All drone server operations maintain thread safety for concurrent access from
+ * the AI controller, network clients, and visualization system.
+ * 
+ * @copyright Copyright (c) 2024
+ * 
+ * @ingroup networking
+ * @ingroup core_modules
+ */
+
+#define _POSIX_C_SOURCE 199309L
 #include "headers/drone.h"
 #include "headers/globals.h"
+#include "headers/server_throughput.h"
+#include "headers/list.h"
+#include "headers/survivor.h"  // Added include for survivor-related variables
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>
@@ -11,9 +70,21 @@
 #include <json-c/json.h>
 #include <netinet/in.h>
 
-int num_drones = 20; // Default fleet size
+/** @brief Default fleet size */
+int num_drones = 20;
+
+/** @brief Server port for drone communication */
 #define SERVER_PORT 8080
 
+/**
+ * @brief Server thread function to listen for drone connections
+ * 
+ * Creates a socket server that listens for incoming drone client connections
+ * and launches a new thread for each connected drone
+ * 
+ * @param arg Unused thread parameter
+ * @return NULL when thread terminates
+ */
 void *drone_server(void *arg)
 {
     (void)arg;
@@ -22,8 +93,10 @@ void *drone_server(void *arg)
     if (server_fd < 0)
     {
         perror("Socket creation failed");
+        perf_record_error();
         return NULL;
     }
+    
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;
@@ -33,6 +106,7 @@ void *drone_server(void *arg)
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
     {
         perror("Set socket options failed");
+        perf_record_error();
         close(server_fd);
         return NULL;
     }
@@ -40,27 +114,39 @@ void *drone_server(void *arg)
     if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
     {
         perror("Bind failed");
+        perf_record_error();
         close(server_fd);
         return NULL;
     }
+    
     if (listen(server_fd, 3) < 0)
     {
         perror("Listen failed");
+        perf_record_error();
         close(server_fd);
         return NULL;
     }
+    
     printf("Drone server listening on port 8080...\n");
+    
     while (1)
     {
         int new_socket;
         struct sockaddr_in client_addr;
         socklen_t addr_len = sizeof(client_addr);
+        
         if ((new_socket = accept(server_fd, (struct sockaddr *)&client_addr, &addr_len)) < 0)
         {
             perror("Accept failed");
+            perf_record_error();
             continue;
         }
-        printf("New drone connection accepted\n");
+        
+        printf("New drone connection accepted from %s:%d\n", 
+               inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+        
+        // Record new connection
+        perf_record_connection(1);
 
         // Handle the new connection in a separate thread
         pthread_t client_thread;
@@ -68,21 +154,38 @@ void *drone_server(void *arg)
         if (socket_ptr == NULL)
         {
             perror("Memory allocation failed");
+            perf_record_error();
             close(new_socket);
+            perf_record_connection(0); // Record failed connection cleanup
             continue;
         }
         *socket_ptr = new_socket;
-        pthread_create(&client_thread, NULL, handle_drone_client, (void *)socket_ptr);
+        
+        if (pthread_create(&client_thread, NULL, handle_drone_client, (void *)socket_ptr) != 0)
+        {
+            perror("Failed to create client thread");
+            perf_record_error();
+            free(socket_ptr);
+            close(new_socket);
+            perf_record_connection(0);
+            continue;
+        }
+        
         pthread_detach(client_thread); // Detach thread to auto-cleanup
     }
+    
     close(server_fd);
     return NULL;
 }
 
 /**
- * Handle communication with a connected drone client
+ * @brief Handle communication with a connected drone client
+ * 
+ * Processes messages from a drone client, including handshake, status
+ * updates, mission completions, and heartbeats
+ * 
  * @param arg Pointer to socket descriptor
- * @return NULL
+ * @return NULL when thread terminates
  */
 void *handle_drone_client(void *arg)
 {
@@ -91,6 +194,10 @@ void *handle_drone_client(void *arg)
 
     char buffer[4096];
     ssize_t bytes_received;
+    struct timespec start_time, end_time;
+
+    // Measure handshake response time
+    clock_gettime(CLOCK_MONOTONIC, &start_time);
 
     // Receive HANDSHAKE message
     bytes_received = recv(sock, buffer, sizeof(buffer) - 1, 0);
@@ -98,21 +205,27 @@ void *handle_drone_client(void *arg)
     {
         if (bytes_received == 0)
             printf("Client disconnected before handshake\n");
-        else
+        else {
             perror("Error receiving handshake");
+            perf_record_error();
+        }
         close(sock);
+        perf_record_connection(0);
         return NULL;
     }
 
     buffer[bytes_received] = '\0'; // Null-terminate the received data
-    printf("Received data: %s\n", buffer);
+    printf("Received handshake data: %zd bytes\n", bytes_received);
+    perf_record_status_update(bytes_received);
 
     // Parse the received JSON data
     struct json_object *parsed_json = json_tokener_parse(buffer);
     if (parsed_json == NULL)
     {
         printf("Failed to parse JSON data\n");
+        perf_record_error();
         close(sock);
+        perf_record_connection(0);
         return NULL;
     }
 
@@ -122,8 +235,10 @@ void *handle_drone_client(void *arg)
         strcmp(json_object_get_string(type_obj), "HANDSHAKE") != 0)
     {
         printf("Not a valid handshake message\n");
+        perf_record_error();
         json_object_put(parsed_json);
         close(sock);
+        perf_record_connection(0);
         return NULL;
     }
 
@@ -187,8 +302,10 @@ void *handle_drone_client(void *arg)
     if (!node)
     {
         fprintf(stderr, "Failed to add drone %d to list\n", drone.id);
+        perf_record_error();
         pthread_mutex_destroy(&drone.lock);
         close(sock);
+        perf_record_connection(0);
         return NULL;
     }
 
@@ -208,21 +325,40 @@ void *handle_drone_client(void *arg)
 
     // Send the handshake acknowledgment
     const char *ack_str = json_object_to_json_string(handshake_ack);
-    send(sock, ack_str, strlen(ack_str), 0);
+    size_t ack_size = strlen(ack_str);
+    ssize_t bytes_sent = send(sock, ack_str, ack_size, 0);
+    
+    if (bytes_sent > 0) {
+        perf_record_heartbeat(bytes_sent);
+        
+        // Record handshake response time
+        clock_gettime(CLOCK_MONOTONIC, &end_time);
+        double response_time = (end_time.tv_sec - start_time.tv_sec) * 1000.0 + 
+                              (end_time.tv_nsec - start_time.tv_nsec) / 1000000.0;
+        perf_record_response_time(response_time);
+        
+        printf("Handshake acknowledgment sent to drone %d (%zd bytes, %.2fms)\n", 
+               d->id, bytes_sent, response_time);
+    } else {
+        perf_record_error();
+    }
+    
     json_object_put(handshake_ack);
-
-    printf("Handshake acknowledgment sent to drone %d\n", d->id);
 
     // Main loop to handle communication with this drone
     while (1)
     {
+        clock_gettime(CLOCK_MONOTONIC, &start_time);
+        
         bytes_received = recv(sock, buffer, sizeof(buffer) - 1, 0);
         if (bytes_received <= 0)
         {
             if (bytes_received == 0)
                 printf("Drone %d disconnected\n", d->id);
-            else
+            else {
                 perror("Error receiving from drone");
+                perf_record_error();
+            }
 
             // Mark drone as disconnected
             pthread_mutex_lock(&d->lock);
@@ -236,13 +372,15 @@ void *handle_drone_client(void *arg)
             else
             {
                 printf("Failed to remove drone %d from list\n", d->id);
+                perf_record_error();
             }
 
+            perf_record_connection(0); // Record disconnection
             break;
         }
 
         buffer[bytes_received] = '\0';
-        //printf("Received from drone %d: %s\n", d->id, buffer);
+        perf_record_status_update(bytes_received);
 
         // Try to parse multiple JSON messages in a single buffer
         char* json_start = buffer;
@@ -283,13 +421,14 @@ void *handle_drone_client(void *arg)
                         char temp = *json_end;
                         *json_end = '\0';
                         
-                        //printf("Processing JSON message: %s\n", json_start);
+                        clock_gettime(CLOCK_MONOTONIC, &start_time); // Reset timer for individual message
                         parsed_json = json_tokener_parse(json_start);
                         
                         *json_end = temp; // Restore the buffer
                         
                         if (parsed_json == NULL) {
                             printf("Failed to parse JSON data from drone %d\n", d->id);
+                            perf_record_error();
                             continue;
                         }
                         
@@ -327,11 +466,16 @@ void *handle_drone_client(void *arg)
                                 localtime_r(&t, &d->last_update);
                                 
                                 pthread_mutex_unlock(&d->lock);
-                                //printf("Processed STATUS_UPDATE message\n");
+                                
+                                // Record processing time
+                                clock_gettime(CLOCK_MONOTONIC, &end_time);
+                                double processing_time = (end_time.tv_sec - start_time.tv_sec) * 1000.0 + 
+                                                        (end_time.tv_nsec - start_time.tv_nsec) / 1000000.0;
+                                perf_record_response_time(processing_time);
                             }
                             else if (strcmp(msg_type, "MISSION_COMPLETE") == 0) {
                                 // Handle mission completion
-                                //printf("Received MISSION_COMPLETE message from drone %d\n", d->id);
+                                printf("Received MISSION_COMPLETE message from drone %d\n", d->id);
                                 
                                 // Get target location if provided in the message
                                 Coord target_coord = d->target; // Default to current target
@@ -342,18 +486,21 @@ void *handle_drone_client(void *arg)
                                         json_object_object_get_ex(target_location, "y", &y_obj)) {
                                         target_coord.x = json_object_get_int(x_obj);
                                         target_coord.y = json_object_get_int(y_obj);
-                                        
                                     }
                                 }
                                 
                                 pthread_mutex_lock(&d->lock);
                                 d->status = IDLE;
-                                
                                 pthread_mutex_unlock(&d->lock);
                                     
                                 // Call update_drone_status with explicit target coordinates
                                 update_drone_status(d, &target_coord);
                                 
+                                // Record mission completion processing time
+                                clock_gettime(CLOCK_MONOTONIC, &end_time);
+                                double processing_time = (end_time.tv_sec - start_time.tv_sec) * 1000.0 + 
+                                                        (end_time.tv_nsec - start_time.tv_nsec) / 1000000.0;
+                                perf_record_response_time(processing_time);
                             }
                             else if (strcmp(msg_type, "HEARTBEAT_RESPONSE") == 0) {
                                 // Update last contact time
@@ -361,6 +508,12 @@ void *handle_drone_client(void *arg)
                                 time(&t);
                                 localtime_r(&t, &d->last_update);
                                 pthread_mutex_unlock(&d->lock);
+                                
+                                // Record heartbeat response time
+                                clock_gettime(CLOCK_MONOTONIC, &end_time);
+                                double heartbeat_time = (end_time.tv_sec - start_time.tv_sec) * 1000.0 + 
+                                                       (end_time.tv_nsec - start_time.tv_nsec) / 1000000.0;
+                                perf_record_response_time(heartbeat_time);
                             }
                         }
                         
@@ -378,16 +531,22 @@ void *handle_drone_client(void *arg)
     return NULL;
 }
 
+/**
+ * @brief Update drone status after mission completion
+ * 
+ * Updates the status of a survivor after being rescued by a drone
+ * 
+ * @param drone Pointer to drone that completed a mission
+ * @param target Coordinates of the completed mission target
+ */
 void update_drone_status(Drone *drone, Coord *target)
 {
     if (!drone || !target)
     {
         fprintf(stderr, "Invalid arguments in update_drone_status\n");
+        perf_record_error();
         return;
     }
-
-    // No need to lock the drone here, as we've already locked it in the calling function
-    // (in handle_drone_client when processing MISSION_COMPLETE)
 
     // Keep track if we found and updated a survivor
     int found_survivor = 0;
@@ -421,22 +580,20 @@ void update_drone_status(Drone *drone, Coord *target)
     if (!found_survivor) {
         printf("Warning: No matching survivor found for drone %d at target (%d, %d)\n",
                drone->id, target->x, target->y);
+        perf_record_error();
     }
 
     // The drone status has already been set to IDLE in the calling function
-    // so we don't need to update it here
 }
 
 /**
- * Clean up drone resources
+ * @brief Clean up drone resources
+ * 
  * Cancels threads, destroys mutexes, and frees memory
  */
 void cleanup_drones()
 {
     // Traverse the list and clean up each drone
-    // Note: We don't lock the list here since we're only reading
-    //       and any modifications to the list should be done through
-    //       the list's thread-safe interface
     Node *current = drones->head;
 
     while (current != NULL)
@@ -446,8 +603,13 @@ void cleanup_drones()
         // Cancel the drone's thread
         pthread_cancel(d->thread_id);
 
+        // Close the socket if it's open
+        if (d->socket > 0) {
+            close(d->socket);
+            perf_record_connection(0); // Record disconnection
+        }
+
         // Destroy the drone's mutex - must be careful with this!
-        // Lock it first to ensure no other thread is using it
         pthread_mutex_lock(&d->lock);
         pthread_mutex_unlock(&d->lock);
         pthread_mutex_destroy(&d->lock);

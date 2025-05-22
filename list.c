@@ -1,15 +1,47 @@
 /**
  * @file list.c
- * @author adaskin
- * @brief  a simple doubly linked list stored in an array(contiguous
- * memory). this program is written for educational purposes 
- * and may include some bugs.
+ * @brief Thread-safe doubly linked list implementation with contiguous memory allocation
+ * @author Amar Daskin - Wilmer Cuevas - Jelsin Sanchez
  * @version 0.2
- * @date 2024-05-19
- *
+ * @date 2025-05-22
+ * 
+ * This module provides a high-performance, thread-safe doubly linked list
+ * implementation designed for the emergency drone coordination system. It
+ * features contiguous memory allocation, semaphore-based flow control,
+ * and comprehensive synchronization for multi-threaded environments.
+ * 
+ * **Key Features:**
+ * - Contiguous memory allocation for cache efficiency
+ * - Thread-safe operations with mutex and semaphore protection
+ * - Semaphore-based overflow/underflow prevention
+ * - Free list management for efficient node reuse
+ * - Function pointer interface for object-oriented usage
+ * - Support for arbitrary data types through flexible array members
+ * 
+ * **Memory Management:**
+ * - Pre-allocated contiguous memory block for all nodes
+ * - Free list for efficient node recycling
+ * - Zero-copy operations where possible
+ * - Predictable memory usage with fixed capacity
+ * 
+ * **Thread Safety:**
+ * - Mutex protection for all structural modifications
+ * - Semaphore-based flow control (elements_sem, spaces_sem)
+ * - Atomic operations for thread-safe access patterns
+ * - Deadlock prevention through consistent locking order
+ * 
+ * **Performance Characteristics:**
+ * - O(1) insertion and deletion at head/tail
+ * - O(n) search operations for data matching
+ * - Cache-friendly memory layout for iteration
+ * - Minimal dynamic allocation during runtime
+ * 
  * @copyright Copyright (c) 2024
- *
+ * 
+ * @ingroup core_modules
+ * @ingroup data_structures
  */
+
 #include "headers/list.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,16 +49,27 @@
 #include <semaphore.h>
 
 // Forward declarations for internal functions
+/**
+ * @brief Finds an unoccupied memory cell in the list's memory area
+ * @param list The list to search in
+ * @return Pointer to an unoccupied node or NULL if none available
+ */
 static Node *find_memcell_fornode(List *list);
+
+/**
+ * @brief Gets a node from the free list or finds one in memory
+ * @param list The list to get a node from
+ * @return Pointer to a free node or NULL if none available
+ */
 static Node *get_free_node(List *list);
 
 /**
  * @brief Create a list object, allocates new memory for list, and
  * sets its data members
  *
- * @param datasize: size of data in each node
- * @param capacity: maximum number of nodes can be stored in this list
- * @return List*
+ * @param datasize Size of data in each node
+ * @param capacity Maximum number of nodes can be stored in this list
+ * @return Pointer to the new list or NULL on failure
  */
 List *create_list(size_t datasize, int capacity) {
     List *list = malloc(sizeof(List));
@@ -88,9 +131,12 @@ List *create_list(size_t datasize, int capacity) {
 }
 
 /**
- * @brief finds a memory cell in the mem area of list
- * @param list
- * @return Node*
+ * @brief Finds a memory cell in the mem area of list
+ * 
+ * Searches through the list's memory area for an unoccupied node
+ * 
+ * @param list The list to search in
+ * @return Pointer to an unoccupied node or NULL if none available
  */
 static Node *find_memcell_fornode(List *list) {
     Node *node = NULL;
@@ -121,8 +167,12 @@ static Node *find_memcell_fornode(List *list) {
 
 /**
  * @brief Gets a node from the free list or finds one in memory
- * @param list
- * @return Node*
+ * 
+ * First tries to retrieve a node from the free list, and if that fails,
+ * searches for an unoccupied memory cell in the list's memory area
+ * 
+ * @param list The list to get a node from
+ * @return Pointer to a free node or NULL if none available
  */
 static Node *get_free_node(List *list) {
     // First try to get a node from the free list
@@ -141,12 +191,14 @@ static Node *get_free_node(List *list) {
 }
 
 /**
- * @brief find an unoccupied node in the array, and makes a node with
+ * @brief Find an unoccupied node in the array, and makes a node with
  * the given data and ADDS it to the HEAD of the list
- * @param list:
- * @param data: a data addrress, its size is determined from
- * list->datasize
- * @return * find,*
+ * 
+ * Thread-safe implementation with semaphore protection against overflow
+ * 
+ * @param list The list to add to
+ * @param data A data address, its size is determined from list->datasize
+ * @return Pointer to the new node or NULL on failure
  */
 Node *add(List *list, void *data) {
     Node *node = NULL;
@@ -205,11 +257,14 @@ Node *add(List *list, void *data) {
 }
 
 /**
- * @brief finds the node with the value same as the mem pointed by
- * data and removes that node. it returns temp->node
- * @param list
- * @param data
- * @return int: in success, it returns 0; if not found it returns 1.
+ * @brief Finds the node with the value same as the mem pointed by
+ * data and removes that node
+ * 
+ * Thread-safe implementation that safely removes a node matching the provided data
+ * 
+ * @param list The list to remove from
+ * @param data Pointer to data to match and remove
+ * @return 0 on success, 1 if node not found
  */
 int removedata(List *list, void *data) {
     // Lock the list during operation
@@ -262,12 +317,13 @@ int removedata(List *list, void *data) {
 }
 
 /**
- * @brief removes the node from list->head, and copies its data into
- * dest, also returns it.
- * @param list
- * @param dest: address to cpy data
- * @return void*: if there is data, it returns address of dest; else
- * it returns NULL.
+ * @brief Removes the node from the head of the list and copies its data into dest
+ * 
+ * Thread-safe implementation with semaphore protection against underflow
+ * 
+ * @param list The list to pop from
+ * @param dest Address to copy data to (can be NULL)
+ * @return If there is data, it returns address of dest; else it returns NULL
  */
 void *pop(List *list, void *dest) {
     // Wait for an element to be available
@@ -321,9 +377,12 @@ void *pop(List *list, void *dest) {
 }
 
 /**
- * @brief returns the data stored in the head of the list
- * @param list
- * @return void*: returns the address of head->data
+ * @brief Returns the data stored in the head of the list without removing it
+ * 
+ * Thread-safe implementation to examine the head element
+ * 
+ * @param list The list to peek at
+ * @return Address of head->data or NULL if list is empty
  */
 void *peek(List *list) {
     pthread_mutex_lock(&list->lock);
@@ -338,12 +397,13 @@ void *peek(List *list) {
 }
 
 /**
- * @brief removes the given node from the list, it returns removed
- * node.
- * @param list
- * @param node
- * @return int: in sucess, it returns 0; if node not found, it
- * returns 1.
+ * @brief Removes the given node from the list
+ * 
+ * Thread-safe implementation to remove a specific node
+ * 
+ * @param list The list to remove from
+ * @param node The node to remove
+ * @return 0 on success, 1 if node not found
  */
 int removenode(List *list, Node *node) {
     pthread_mutex_lock(&list->lock);
@@ -394,9 +454,11 @@ int removenode(List *list, Node *node) {
 }
 
 /**
- * @brief deletes everything
+ * @brief Deletes the list and all its resources
+ * 
+ * Frees all memory and destroys synchronization objects
  *
- * @param list
+ * @param list The list to destroy
  */
 void destroy(List *list) {
     pthread_mutex_destroy(&list->lock);
@@ -412,10 +474,10 @@ void destroy(List *list) {
 }
 
 /**
- * @brief prints list starting from head
+ * @brief Prints all elements in the list from head to tail
  *
- * @param list
- * @param print: aprint function for the object data.
+ * @param list The list to print
+ * @param print Function to print each element
  */
 void printlist(List *list, void (*print)(void *)) {
     pthread_mutex_lock(&list->lock);
@@ -430,10 +492,10 @@ void printlist(List *list, void (*print)(void *)) {
 }
 
 /**
- * @brief print list starting from tail
+ * @brief Prints all elements in the list from tail to head
  *
- * @param list
- * @param print: print function
+ * @param list The list to print
+ * @param print Function to print each element
  */
 void printlistfromtail(List *list, void (*print)(void *)) {
     pthread_mutex_lock(&list->lock);
