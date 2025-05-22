@@ -242,80 +242,189 @@ void *handle_drone_client(void *arg)
         }
 
         buffer[bytes_received] = '\0';
-        printf("Received from drone %d: %s\n", d->id, buffer);
+        //printf("Received from drone %d: %s\n", d->id, buffer);
 
-        // Parse the received message
-        parsed_json = json_tokener_parse(buffer);
-        if (parsed_json == NULL)
-        {
-            printf("Failed to parse JSON data from drone %d\n", d->id);
-            continue;
-        }
-
-        // Handle different message types (STATUS_UPDATE, MISSION_COMPLETE, etc.)
-        if (json_object_object_get_ex(parsed_json, "type", &type_obj))
-        {
-            const char *msg_type = json_object_get_string(type_obj);
-
-            if (strcmp(msg_type, "STATUS_UPDATE") == 0)
-            {
-                // Handle status update
-                pthread_mutex_lock(&d->lock);
-
-                // Update drone location
-                struct json_object *location_obj;
-                if (json_object_object_get_ex(parsed_json, "location", &location_obj))
-                {
-                    struct json_object *x_obj, *y_obj;
-                    if (json_object_object_get_ex(location_obj, "x", &x_obj) &&
-                        json_object_object_get_ex(location_obj, "y", &y_obj))
-                    {
-                        d->coord.x = json_object_get_int(x_obj);
-                        d->coord.y = json_object_get_int(y_obj);
+        // Try to parse multiple JSON messages in a single buffer
+        char* json_start = buffer;
+        char* json_end = NULL;
+        int json_depth = 0;
+        int in_string = 0;
+        int escape_next = 0;
+        
+        for (int i = 0; i < bytes_received; i++) {
+            // Track JSON structure to find complete objects
+            if (escape_next) {
+                escape_next = 0;
+                continue;
+            }
+            
+            if (buffer[i] == '\\' && !escape_next) {
+                escape_next = 1;
+                continue;
+            }
+            
+            if (buffer[i] == '"' && !escape_next) {
+                in_string = !in_string;
+                continue;
+            }
+            
+            if (!in_string) {
+                if (buffer[i] == '{') {
+                    if (json_depth == 0) {
+                        json_start = buffer + i;
+                    }
+                    json_depth++;
+                } else if (buffer[i] == '}') {
+                    json_depth--;
+                    if (json_depth == 0) {
+                        json_end = buffer + i + 1;
+                        
+                        // We found a complete JSON object, process it
+                        char temp = *json_end;
+                        *json_end = '\0';
+                        
+                        //printf("Processing JSON message: %s\n", json_start);
+                        parsed_json = json_tokener_parse(json_start);
+                        
+                        *json_end = temp; // Restore the buffer
+                        
+                        if (parsed_json == NULL) {
+                            printf("Failed to parse JSON data from drone %d\n", d->id);
+                            continue;
+                        }
+                        
+                        // Handle different message types
+                        if (json_object_object_get_ex(parsed_json, "type", &type_obj)) {
+                            const char *msg_type = json_object_get_string(type_obj);
+                            
+                            if (strcmp(msg_type, "STATUS_UPDATE") == 0) {
+                                // Handle status update
+                                pthread_mutex_lock(&d->lock);
+                                
+                                // Update drone location
+                                struct json_object *location_obj;
+                                if (json_object_object_get_ex(parsed_json, "location", &location_obj)) {
+                                    struct json_object *x_obj, *y_obj;
+                                    if (json_object_object_get_ex(location_obj, "x", &x_obj) &&
+                                        json_object_object_get_ex(location_obj, "y", &y_obj)) {
+                                        d->coord.x = json_object_get_int(x_obj);
+                                        d->coord.y = json_object_get_int(y_obj);
+                                    }
+                                }
+                                
+                                // Update status
+                                struct json_object *status_obj;
+                                if (json_object_object_get_ex(parsed_json, "status", &status_obj)) {
+                                    const char *status_str = json_object_get_string(status_obj);
+                                    if (strcmp(status_str, "idle") == 0)
+                                        d->status = IDLE;
+                                    else if (strcmp(status_str, "busy") == 0)
+                                        d->status = ON_MISSION;
+                                }
+                                
+                                // Update last update time
+                                time(&t);
+                                localtime_r(&t, &d->last_update);
+                                
+                                pthread_mutex_unlock(&d->lock);
+                                //printf("Processed STATUS_UPDATE message\n");
+                            }
+                            else if (strcmp(msg_type, "MISSION_COMPLETE") == 0) {
+                                // Handle mission completion
+                                //printf("Received MISSION_COMPLETE message from drone %d\n", d->id);
+                                
+                                // Get target location if provided in the message
+                                Coord target_coord = d->target; // Default to current target
+                                struct json_object *target_location;
+                                if (json_object_object_get_ex(parsed_json, "target_location", &target_location)) {
+                                    struct json_object *x_obj, *y_obj;
+                                    if (json_object_object_get_ex(target_location, "x", &x_obj) &&
+                                        json_object_object_get_ex(target_location, "y", &y_obj)) {
+                                        target_coord.x = json_object_get_int(x_obj);
+                                        target_coord.y = json_object_get_int(y_obj);
+                                        
+                                    }
+                                }
+                                
+                                pthread_mutex_lock(&d->lock);
+                                d->status = IDLE;
+                                
+                                pthread_mutex_unlock(&d->lock);
+                                    
+                                // Call update_drone_status with explicit target coordinates
+                                update_drone_status(d, &target_coord);
+                                
+                            }
+                            else if (strcmp(msg_type, "HEARTBEAT_RESPONSE") == 0) {
+                                // Update last contact time
+                                pthread_mutex_lock(&d->lock);
+                                time(&t);
+                                localtime_r(&t, &d->last_update);
+                                pthread_mutex_unlock(&d->lock);
+                            }
+                        }
+                        
+                        json_object_put(parsed_json);
+                        
+                        // Move to next character after this JSON object
+                        json_start = json_end;
                     }
                 }
-
-                // Update status
-                struct json_object *status_obj;
-                if (json_object_object_get_ex(parsed_json, "status", &status_obj))
-                {
-                    const char *status_str = json_object_get_string(status_obj);
-                    if (strcmp(status_str, "idle") == 0)
-                        d->status = IDLE;
-                    else if (strcmp(status_str, "busy") == 0)
-                        d->status = ON_MISSION;
-                }
-
-                // Update last update time
-                time(&t);
-                localtime_r(&t, &d->last_update);
-
-                pthread_mutex_unlock(&d->lock);
-            }
-            else if (strcmp(msg_type, "MISSION_COMPLETE") == 0)
-            {
-                // Handle mission completion
-                pthread_mutex_lock(&d->lock);
-                d->status = IDLE;
-                pthread_mutex_unlock(&d->lock);
-
-                printf("Drone %d completed mission\n", d->id);
-            }
-            else if (strcmp(msg_type, "HEARTBEAT_RESPONSE") == 0)
-            {
-                // Update last contact time
-                pthread_mutex_lock(&d->lock);
-                time(&t);
-                localtime_r(&t, &d->last_update);
-                pthread_mutex_unlock(&d->lock);
             }
         }
-
-        json_object_put(parsed_json);
     }
 
     close(sock);
     return NULL;
+}
+
+void update_drone_status(Drone *drone, Coord *target)
+{
+    if (!drone || !target)
+    {
+        fprintf(stderr, "Invalid arguments in update_drone_status\n");
+        return;
+    }
+
+    // No need to lock the drone here, as we've already locked it in the calling function
+    // (in handle_drone_client when processing MISSION_COMPLETE)
+
+    // Keep track if we found and updated a survivor
+    int found_survivor = 0;
+
+    // Find which survivor this drone was helping
+    pthread_mutex_lock(&survivors_mutex);
+    for (int j = 0; j < num_survivors; j++)
+    {
+        // Check for survivors being helped (status 1) that match the drone's target location
+        if (survivor_array[j].status == 1 &&
+            survivor_array[j].coord.x == target->x &&
+            survivor_array[j].coord.y == target->y)
+        {
+            // Mark survivor as rescued
+            survivor_array[j].status = 2; // 2 = rescued (won't be drawn)
+
+            // Set rescue timestamp
+            time_t t;
+            time(&t);
+            localtime_r(&t, &survivor_array[j].helped_time);
+
+            printf("Server updated survivor %d status to rescued by drone %d\n", 
+                   j, drone->id);
+                   
+            found_survivor = 1;
+            break;
+        }
+    }
+    pthread_mutex_unlock(&survivors_mutex);
+
+    if (!found_survivor) {
+        printf("Warning: No matching survivor found for drone %d at target (%d, %d)\n",
+               drone->id, target->x, target->y);
+    }
+
+    // The drone status has already been set to IDLE in the calling function
+    // so we don't need to update it here
 }
 
 /**

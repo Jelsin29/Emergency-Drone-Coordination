@@ -33,5 +33,6 @@ void* drone_server(void *arg);
 void *handle_drone_client(void *arg);
 void initialize_drones();
 void cleanup_drones();
+void update_drone_status(Drone *drone, Coord *target);
 
 #endif

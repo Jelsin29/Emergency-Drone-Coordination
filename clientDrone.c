@@ -40,6 +40,12 @@ void* drone_behavior(void *arg) {
             if(new_pos.y < my_drone.target.y) new_pos.y++;
             else if(new_pos.y > my_drone.target.y) new_pos.y--;
             
+            // Debug print to track movement calculation
+            printf("*** Movement calc: Current (%d,%d) Target (%d,%d) NewPos (%d,%d) Status=%d\n",
+                  my_drone.coord.x, my_drone.coord.y, 
+                  my_drone.target.x, my_drone.target.y,
+                  new_pos.x, new_pos.y, my_drone.status);
+            
             // Check if position actually changed
             if(new_pos.x != my_drone.coord.x || new_pos.y != my_drone.coord.y) {
                 // Update position
@@ -56,14 +62,17 @@ void* drone_behavior(void *arg) {
                 json_object_object_add(location, "x", json_object_new_int(my_drone.coord.x));
                 json_object_object_add(location, "y", json_object_new_int(my_drone.coord.y));
                 json_object_object_add(status_update, "location", location);
-                
+
                 // Include current status
-                json_object_object_add(status_update, "status", json_object_new_string("busy"));
+                json_object_object_add(status_update, "status", json_object_new_string(my_drone.status == IDLE ? "idle" : "busy"));
+                json_object_object_add(status_update, "battery", json_object_new_int(100)); // Add battery level for better info
                 
                 // Send the update
                 const char *update_str = json_object_to_json_string(status_update);
                 pthread_mutex_lock(&sock_mutex);
                 send(sock, update_str, strlen(update_str), 0);
+                // Send a newline character to separate JSON messages
+                send(sock, "\n", 1, 0);
                 pthread_mutex_unlock(&sock_mutex);
                 
                 // Free the JSON object
@@ -75,24 +84,53 @@ void* drone_behavior(void *arg) {
 
         // Check if the drone has reached its target
         if (my_drone.status == ON_MISSION && my_drone.coord.x == my_drone.target.x && my_drone.coord.y == my_drone.target.y) {
+            // Wait a short while to ensure status update is fully processed
+            pthread_mutex_unlock(&my_drone.lock);
+            usleep(100000); // 100ms delay
+            pthread_mutex_lock(&my_drone.lock);
+            
+            // Only proceed if we're still on mission (status may have changed)
+            if (my_drone.status != ON_MISSION) {
+                pthread_mutex_unlock(&my_drone.lock);
+                continue;
+            }
+            
             // Notify the server about mission completion
+            printf("*** TARGET REACHED! Current=(%d,%d), Target=(%d,%d) - Preparing MISSION_COMPLETE message\n",
+                  my_drone.coord.x, my_drone.coord.y, my_drone.target.x, my_drone.target.y);
+                  
             struct json_object *mission_complete = json_object_new_object();
             json_object_object_add(mission_complete, "type", json_object_new_string("MISSION_COMPLETE"));
             json_object_object_add(mission_complete, "drone_id", json_object_new_int(my_drone.id));
             json_object_object_add(mission_complete, "timestamp", json_object_new_int(time(NULL)));
             json_object_object_add(mission_complete, "success", json_object_new_boolean(1));
             json_object_object_add(mission_complete, "details", json_object_new_string("Mission completed successfully."));
+            
+            // Add target location to help server find the correct survivor
+            struct json_object *target_location = json_object_new_object();
+            json_object_object_add(target_location, "x", json_object_new_int(my_drone.target.x));
+            json_object_object_add(target_location, "y", json_object_new_int(my_drone.target.y));
+            json_object_object_add(mission_complete, "target_location", target_location);
 
             const char *mission_complete_str = json_object_to_json_string(mission_complete);
             
             pthread_mutex_lock(&sock_mutex);
-            send(sock, mission_complete_str, strlen(mission_complete_str), 0);
+            int send_result = send(sock, mission_complete_str, strlen(mission_complete_str), 0);
+            // Send a newline character to separate JSON messages
+            send(sock, "\n", 1, 0);
             pthread_mutex_unlock(&sock_mutex);
+            
+            if (send_result < 0) {
+                perror("Failed to send MISSION_COMPLETE message");
+            } else {
+                printf("*** MISSION_COMPLETE message sent successfully (%d bytes)\n", send_result);
+            }
             
             json_object_put(mission_complete);
 
             // Reset the drone's status to IDLE
             my_drone.status = IDLE;
+            printf("*** Drone status changed to IDLE\n");
         } else {
             // Update timestamp only if the mission is not yet complete
             time_t t;
@@ -106,6 +144,24 @@ void* drone_behavior(void *arg) {
         usleep(300000); // 300ms
     }
     
+    return NULL;
+}
+
+void* drone_status_monitor(void *arg) {
+    (void)arg; // Unused parameter
+
+    while (running) {
+        pthread_mutex_lock(&my_drone.lock);
+        printf("Drone Status: ID=%d, Status=%s, Position=(%d,%d), Target=(%d,%d)\n",
+               my_drone.id,
+               my_drone.status == IDLE ? "IDLE" : "ON_MISSION",
+               my_drone.coord.x, my_drone.coord.y,
+               my_drone.target.x, my_drone.target.y);
+        pthread_mutex_unlock(&my_drone.lock);
+
+        sleep(5); // Print status every 5 seconds
+    }
+
     return NULL;
 }
 
@@ -210,6 +266,10 @@ int main()
         exit(EXIT_FAILURE);
     }
 
+    // Periodically print drone status for debugging
+    pthread_t status_monitor_thread;
+    pthread_create(&status_monitor_thread, NULL, &drone_status_monitor, NULL);
+    pthread_detach(status_monitor_thread);
 
     printf("Drone %d is ready for missions.\n", my_drone.id);
 
@@ -258,12 +318,18 @@ int main()
                         struct json_object *x, *y;
                         if (json_object_object_get_ex(target, "x", &x) &&
                             json_object_object_get_ex(target, "y", &y)) {
+                            int target_x = json_object_get_int(x);
+                            int target_y = json_object_get_int(y);
+                            
                             pthread_mutex_lock(&my_drone.lock);
-                            my_drone.target.x = json_object_get_int(x);
-                            my_drone.target.y = json_object_get_int(y);
+                            my_drone.target.x = target_x;
+                            my_drone.target.y = target_y;
                             my_drone.status = ON_MISSION;
+                            printf("*** MISSION STATUS CHANGE: Drone %d status set to ON_MISSION\n", my_drone.id);
                             pthread_mutex_unlock(&my_drone.lock);
-                            printf("Mission assigned: Target (%d, %d)\n", my_drone.target.x, my_drone.target.y);
+                            
+                            printf("Mission assigned: Target (%d, %d) - Current position: (%d, %d)\n", 
+                                  target_x, target_y, my_drone.coord.x, my_drone.coord.y);
                         }
                     }
                 }
