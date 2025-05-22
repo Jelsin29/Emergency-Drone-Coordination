@@ -31,10 +31,21 @@
  * - Cleanup and removal on disconnection
  * 
  * **Thread Safety:**
- * - Per-drone mutex protection for status updates
- * - Global drone list synchronization for concurrent access
- * - Survivor array coordination for mission completion
- * - Performance metrics integration with atomic operations
+ * This module implements comprehensive thread safety measures to ensure reliable
+ * operation in the multi-threaded drone coordination system:
+ * 
+ * - Each drone has its own mutex (drone->lock) for protecting status and position updates
+ * - The global drones list has a mutex (drones->lock) for add/remove operations
+ * - Proper locking order is maintained to prevent deadlocks:
+ *   1. Always acquire drones list lock before individual drone locks
+ *   2. Always acquire drone locks in ascending ID order when locking multiple drones
+ * - Socket operations are protected with proper synchronization
+ * - Status updates use atomic operations where possible
+ * - Network message handling is thread-safe with per-connection mutexes
+ * - Drone tracking data structures prevent race conditions during updates
+ * 
+ * All drone server operations maintain thread safety for concurrent access from
+ * the AI controller, network clients, and visualization system.
  * 
  * @copyright Copyright (c) 2024
  * 
@@ -46,6 +57,8 @@
 #include "headers/drone.h"
 #include "headers/globals.h"
 #include "headers/server_throughput.h"
+#include "headers/list.h"
+#include "headers/survivor.h"  // Added include for survivor-related variables
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>

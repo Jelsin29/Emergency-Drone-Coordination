@@ -57,7 +57,7 @@
  * performance characteristics. When the limit is reached, rescued
  * survivors may be recycled to make space for new arrivals.
  */
-#define MAX_SURVIVORS 100
+// Removed MAX_SURVIVORS definition to avoid conflict with globals.h
 
 /** @} */ // end of survivor_constants group
 
