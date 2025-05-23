@@ -3,6 +3,8 @@
 **Objective**:  
 Transition from a simulator to a real client-server system where drones (clients) communicate with a central server to coordinate emergency aid for survivors (simulated by random generations). Students will implement synchronization, thread-safe data structures, and networked communication, mirroring real-world drone swarm coordination systems.
 
+![Screenshot](img/program.png)
+
 ---
 
 ### **Phased Implementation Plan**  
@@ -121,6 +123,8 @@ see [communication protocol details](communication-protocol.md)
 
 ---
 
+![Load Testing with 50 drones](img/load_testing.png)
+
 ### **Technical Components**  
 #### **Client (Drone)**  
 - **Key Functions**:  
@@ -175,3 +179,59 @@ The project uses Doxygen to generate comprehensive documentation. Follow these s
    - **Classes**: Data structure documentation with relationships
    - **Files**: Source code documentation with dependencies
    - **Examples**: Usage examples and test cases
+
+---
+
+### **Building and Running the System**
+
+#### **Compilation**
+1. **Build all components at once**:
+   ```bash
+   # Build the entire system (server, client, and tests)
+   make all
+   ```
+
+2. **Build specific components**:
+   ```bash
+   # Build just the server component
+   make drone_simulator
+
+   # Build just the client component
+   make drone_client
+
+   # Build test utilities
+   make tests
+   ```
+
+#### **Running the System**
+
+1. **Start the coordination server**:
+   ```bash
+   # Launch the server (must be started first)
+   ./drone_simulator
+   ```
+   This launches the central coordination server with SDL visualization. The server will display a map showing drones, survivors, and ongoing missions.
+
+2. **Connect a single drone client**:
+   ```bash
+   # Launch a single drone client that connects to the server
+   ./drone_client
+   ```
+   Each client will automatically connect to the server and begin accepting missions.
+
+3. **Launch multiple drone clients simultaneously**:
+   ```bash
+   # Launch 50 drone clients in the background
+   ./tests/launch_drones.sh
+   ```
+   The script creates multiple client instances that connect to the local server, enabling large-scale testing of the coordination system.
+
+#### **Monitoring and Debugging**
+
+- View real-time performance metrics in the terminal during server execution
+- Check CSV output logs in the project directory for detailed performance analysis
+- The final performance metrics in json format are written automatically in files in the project directory
+- Use `Ctrl+C` to gracefully shut down the server and get final statistics
+
+![Load Testing with 50 drones](img/load_testing.png)
+---
