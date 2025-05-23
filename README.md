@@ -1,9 +1,66 @@
-## **Project: Emergency Drone Coordination System (Client-Server app)**  
+# **Emergency Drone Coordination System**
 
-**Objective**:  
-Transition from a simulator to a real client-server system where drones (clients) communicate with a central server to coordinate emergency aid for survivors (simulated by random generations). Students will implement synchronization, thread-safe data structures, and networked communication, mirroring real-world drone swarm coordination systems.
+## **Overview**
+The Emergency Drone Coordination System is a sophisticated multi-threaded client-server application designed for coordinating autonomous drone fleets during emergency response situations. The system enables efficient resource allocation by dispatching drones to survivors in disaster zones using distance-optimized algorithms and real-time communications.
 
 ![Screenshot](img/program.png)
+
+## **Key Features**
+- **🤖 AI-Driven Mission Assignment**: Optimized drone-to-survivor matching using proximity calculations
+- **🌐 Client-Server Architecture**: TCP/IP-based communication with JSON messaging protocol
+- **📊 Real-time Visualization**: SDL2-based graphical interface with color-coded entities
+- **⚡ High Performance**: Supports 50+ simultaneous drone connections and 1000+ survivors
+- **🔒 Thread Safety**: Comprehensive synchronization with mutex protection and deadlock prevention
+- **📈 Performance Monitoring**: Real-time metrics tracking response times, throughput, and resource utilization
+
+## **System Architecture**
+The system is built around three main components:
+
+### **Server Component**
+The central coordination server manages the emergency response operation:
+- Multi-threaded architecture for concurrent drone connections
+- Advanced survivor tracking with spatial indexing
+- AI controller for intelligent mission assignment
+- Thread-safe data structures for reliable coordination
+- Performance monitoring with real-time statistics
+
+### **Client Component**
+Autonomous drone clients connect to the server and perform rescue missions:
+- TCP/IP-based communication with the coordination server
+- Automatic status reporting and mission execution
+- Path planning for efficient navigation
+- Fault-tolerant operation with connection management
+
+### **Visualization System**
+Real-time graphical representation of the emergency response scenario:
+- Color-coded display: survivors (red), idle drones (blue), active missions (green)
+- Dynamic map updating as missions progress
+- Performance statistics dashboard
+
+![Load Testing with 50 drones](img/load_testing.png)
+
+## **Technical Implementation**
+
+### **Communication Protocol**
+A lightweight JSON-based protocol enables efficient server-client interaction:
+- **Drone → Server**: Status updates, mission completions
+- **Server → Drone**: Mission assignments, heartbeat messages
+- See [communication protocol details](communication-protocol.md) for complete specifications
+
+### **Multi-Threading Model**
+The system uses a carefully designed threading architecture:
+- One thread per connected drone for message handling
+- Dedicated threads for AI control, survivor generation, and performance monitoring
+- Main thread handles visualization and user interaction
+
+### **Synchronization Strategy**
+Thread safety is ensured through a comprehensive synchronization approach:
+- Per-list mutex protection for shared data structures
+- Fine-grained locking to maximize concurrency
+- Semaphore-based flow control for list operations
+- Strict locking hierarchy to prevent deadlocks
+
+![Throughput metrics](img/throughput_metrics.png)
 
 ---
 
@@ -123,39 +180,6 @@ see [communication protocol details](communication-protocol.md)
 
 ---
 
-![Load Testing with 50 drones](img/load_testing.png)
-
-### **Technical Components**  
-#### **Client (Drone)**  
-- **Key Functions**:  
-  - `connect_to_server()`: Establishes TCP connection.  
-  - `send_status_update()`: Periodically reports drone state.  
-  - `navigate_to_target()`: Simulates movement toward survivor coordinates.  
-
-#### **Server**  
-- **Key Functions**:  
-  - `handle_drone()`: Thread to manage each drone connection.  
-  - `assign_missions()`: AI logic to match drones and survivors.  
-  - `log_performance()`: Track average survivor wait time and drone utilization.  
-
-#### **Communication Protocol (see [communcation-protocol.md](communication-protocol.md))**  
-- **Messages**:  
-  - Drone → Server: `STATUS_UPDATE`, `MISSION_COMPLETE`.  
-  - Server → Drone: `ASSIGN_MISSION`, `HEARTBEAT`.  
-- **Format**: JSON (simple, human-readable).  
-
----
-
-### **Learning Outcomes**  
-1. **Core Skills**:  
-   - Thread synchronization (mutexes), socket programming, and client-server design.  
-2. **Real-World Relevance**:  
-   - Mirrors systems like Zipline's medical delivery drones or Amazon's delivery swarms.  
-3. **Problem Solving**:  
-   - Debug race conditions, optimize latency, and handle scalability.  
-
----
-
 ### **Documentation Generation**
 The project uses Doxygen to generate comprehensive documentation. Follow these steps to generate updated documentation:
 
@@ -233,5 +257,6 @@ The project uses Doxygen to generate comprehensive documentation. Follow these s
 - The final performance metrics in json format are written automatically in files in the project directory
 - Use `Ctrl+C` to gracefully shut down the server and get final statistics
 
-![Load Testing with 50 drones](img/load_testing.png)
+![Throughput metrics](img/throughput_metrics.png)
 ---
+````
