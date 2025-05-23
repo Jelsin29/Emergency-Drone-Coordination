@@ -1,23 +1,3 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/Ckx1vpHM)
-GUNCELLEMELER
-```markdown
-   ## phase1'i yaparken (lab 10 yani),
-   locklari init etmeyi unutmayin (create_list icerisinde olabilir). Kodu test ederken once tum senkronizasyonlari devre disi birakin. Sonra adim adim tekrar yapin. Size verilen kod kismi olarak fikir vermesi bakimindan implementasyonlu verildi. Yoksa kod hatali!
-   
-   Listedeki add/remove/pop vb fonksiyonlara senkronizasyon ekledikten sonra bu fonksiyonlari cagirirken tekrardan lock/unlock yapmaniz gerekmiyor. Ancak iterasyon yaparsaniz onlarda ayni locki kullanmaniz gerekiyor.
-   
-   Buffer overflow/underflow vb leri icin semaphor yada condition variable kullanmaniz gerekiyor.
-   Drone datasina erisirken herbir droneun ayrica locki var onlarida kullanmayi ihmal etmeyin.
-   
-   ## Phase-2de
-   drone_fleet yerine drones listeyi kullanmaniz gerekiyor. Cunku drone ekleme ve cikarma gelen requestlerle oluyor.
-   
-   communication-protocol.md dosyasinda haberlesme icin kullanilacak komut listesi var. En az onlar olsun, fazlasi ihtiyaca gore ekleyebilirsiniz. JSON parse etme icin hazir kod kullanabilirsiniz.
-   
-   ## view.cde
-   listelerdeki locklardan bagimsiz bir yapiya kavusturursaniz iyi olur. Boylelikle, client tarafinda da kullanabilirsiniz. Bu durumda datayi kopyalamaniz veya verimli olmasi icin datadaki degisiklikleri gondermeniz gerekebilir. (snapshot aldiktan sonra o snapshota gore degisenler)
-```
-
 ## **Project: Emergency Drone Coordination System (Client-Server app)**  
 
 **Objective**:  
@@ -166,26 +146,32 @@ see [communication protocol details](communication-protocol.md)
 1. **Core Skills**:  
    - Thread synchronization (mutexes), socket programming, and client-server design.  
 2. **Real-World Relevance**:  
-   - Mirrors systems like Zipline’s medical delivery drones or Amazon’s delivery swarms.  
+   - Mirrors systems like Zipline's medical delivery drones or Amazon's delivery swarms.  
 3. **Problem Solving**:  
    - Debug race conditions, optimize latency, and handle scalability.  
 
 ---
 
-### **Grading Criteria**  
-- **Code (50%)**:  
-  - Thread-safe lists, working socket communication, AI logic.  
-- **Report (25%)**:  
-  - Explain design choices, synchronization strategy, and performance analysis.  
-- **Demo (25%)**:  
-  - Show handling of 10+ concurrent drones with real-time SDL visualization.  
+### **Documentation Generation**
+The project uses Doxygen to generate comprehensive documentation. Follow these steps to generate updated documentation:
 
----
+#### **Prerequisites**
+- Install Doxygen: `sudo apt-get install doxygen` (Ubuntu/Debian)
 
-### **Tools & Starter Code**  
-- **Provided**:  
-  -  `list.h/c` (needs to be fixed), SDL visualization framework, a simulator code as skeleton.  
-- **Recommended Libraries**:  
-  - `json-c` (message parsing), `SDL2` (visualization).  
+#### **Generating Documentation**
+1. **Basic Generation**:
+   ```bash
+   # Generate from the project root
+   doxygen Doxyfile
+   ```
+   This will create/update HTML documentation in the `docs/html` directory
 
+2. **Viewing Documentation**:
+   - HTML: Open `docs/html/index.html` in your browser
 
+3. **Documentation Structure**:
+   - **Main Page**: Overview, features, and architecture
+   - **Modules**: Logical groups of related functionality
+   - **Classes**: Data structure documentation with relationships
+   - **Files**: Source code documentation with dependencies
+   - **Examples**: Usage examples and test cases
