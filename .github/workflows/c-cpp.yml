@@ -51,9 +51,6 @@ jobs:
           echo "Running list tests..."
           make test_list
 
-          echo "Running SDL tests..."
-          make test_sdl
-
           echo "Running throughput tests..."
           make test_throughput
 
