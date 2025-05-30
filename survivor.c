@@ -55,6 +55,7 @@
 #include "headers/map.h"
 
 // Global survivor array
+// clang-format off
 Survivor *survivor_array = NULL;
 int num_survivors = 0;
 pthread_mutex_t survivors_mutex;
@@ -68,7 +69,10 @@ pthread_mutex_t survivors_mutex;
  * @return Pointer to the new survivor or NULL if allocation failed
  */
 Survivor *create_survivor(Coord *coord, char *info,
-                          struct tm *discovery_time) {
+                          struct tm *discovery_time) 
+// clang-format on                          
+                          {
+    // clang-format off
     Survivor *s = malloc(sizeof(Survivor));
     if (!s) return NULL;
 
@@ -79,6 +83,7 @@ Survivor *create_survivor(Coord *coord, char *info,
     s->info[sizeof(s->info) - 1] = '\0';  // Ensure null-termination
     s->status = 0;  // Initialize status (0 = waiting)
     return s;
+    // clang-format on
 }
 
 /**
@@ -86,18 +91,24 @@ Survivor *create_survivor(Coord *coord, char *info,
  * 
  * Allocates survivor array and initializes mutex
  */
-void initialize_survivors() {
+void initialize_survivors()
+{
     // Allocate memory for survivor array
+    // clang-format off
     survivor_array = (Survivor*)malloc(sizeof(Survivor) * MAX_SURVIVORS);
-    if (!survivor_array) {
+    // clang-format on
+    if (!survivor_array)
+    {
         fprintf(stderr, "Failed to allocate memory for survivor array\n");
         exit(EXIT_FAILURE);
     }
-    
+
     // Initialize values
+    // clang-format off
     memset(survivor_array, 0, sizeof(Survivor) * MAX_SURVIVORS);
+    // clang-format on
     num_survivors = 0;
-    
+
     // Initialize mutex
     pthread_mutex_init(&survivors_mutex, NULL);
 }
@@ -107,9 +118,11 @@ void initialize_survivors() {
  * 
  * Frees memory and destroys the mutex
  */
-void cleanup_survivors() {
+void cleanup_survivors()
+{
     pthread_mutex_destroy(&survivors_mutex);
-    if (survivor_array) {
+    if (survivor_array)
+    {
         free(survivor_array);
         survivor_array = NULL;
     }
@@ -124,102 +137,113 @@ void cleanup_survivors() {
  * @param args Unused thread parameters
  * @return NULL
  */
-void *survivor_generator(void *args) {
-    (void)args;  // Explicitly mark parameter as unused to suppress warning
-    
+// clang-format off
+void *survivor_generator(void *args)
+// clang-format on
+{
+    (void)args; // Explicitly mark parameter as unused to suppress warning
+
     // Wait a moment for the system to stabilize
     sleep(1);
-    
+
     // Seed random number generator
     srand(time(NULL));
-    
+
     // Initial batch of survivors (10 at once)
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 10; i++)
+    {
         pthread_mutex_lock(&survivors_mutex);
-        
-        if (num_survivors < MAX_SURVIVORS) {
+
+        if (num_survivors < MAX_SURVIVORS)
+        {
             // Generate random coordinates
             int x = rand() % map.height;
             int y = rand() % map.width;
-            
+
             // Initialize new survivor
             survivor_array[num_survivors].coord.x = x;
             survivor_array[num_survivors].coord.y = y;
             sprintf(survivor_array[num_survivors].info, "SURV-%d", num_survivors);
             survivor_array[num_survivors].status = 0; // Waiting for help
-            
+
             // Set time
             time_t t;
             time(&t);
             localtime_r(&t, &survivor_array[num_survivors].discovery_time);
-            
+
             // Move to next array slot
             num_survivors++;
         }
-        
+
         pthread_mutex_unlock(&survivors_mutex);
-        
+
         // Very small delay between initial survivors
         usleep(100000); // Just 0.1 seconds between spawns
     }
-    
+
     // Constant rapid generation
-    while (1) {
+    while (1)
+    {
         // Very short delay between spawns (0.5-1.5 seconds)
         int delay_ms = (rand() % 1000) + 500;
         usleep(delay_ms * 1000);
-        
+
         // Lock the mutex before checking/modifying the array
         pthread_mutex_lock(&survivors_mutex);
-        
+
         // Only generate a new survivor if there's space in the array
-        if (num_survivors < MAX_SURVIVORS) {
+        if (num_survivors < MAX_SURVIVORS)
+        {
             // Generate random coordinates
             int x = rand() % map.height;
             int y = rand() % map.width;
-            
+
             // Initialize new survivor
             survivor_array[num_survivors].coord.x = x;
             survivor_array[num_survivors].coord.y = y;
             sprintf(survivor_array[num_survivors].info, "SURV-%d", num_survivors);
             survivor_array[num_survivors].status = 0; // Waiting for help
-            
+
             // Set time
             time_t t;
             time(&t);
             localtime_r(&t, &survivor_array[num_survivors].discovery_time);
-            
+
             // Move to next array slot
             num_survivors++;
-        } else {
+        }
+        else
+        {
             //printf("Survivor array is full, recycling survivors...\n");
             // If the array is full, recycle some rescued survivors to make space
             int recycled = 0;
-            for (int i = 0; i < num_survivors && recycled < 5; i++) {
-                if (survivor_array[i].status >= 2) { // If rescued
+            for (int i = 0; i < num_survivors && recycled < 5; i++)
+            {
+                if (survivor_array[i].status >= 2)
+                { // If rescued
                     // Generate new coordinates
                     int x = rand() % map.height;
                     int y = rand() % map.width;
-                    
+
                     // Reset this survivor to a new location
                     survivor_array[i].coord.x = x;
                     survivor_array[i].coord.y = y;
                     survivor_array[i].status = 0; // Waiting for help again
-                    
+
                     // Update time
                     time_t t;
                     time(&t);
                     localtime_r(&t, &survivor_array[i].discovery_time);
-                    
+
                     recycled++;
                 }
             }
         }
-        
+
         // Unlock after modifying the array
         pthread_mutex_unlock(&survivors_mutex);
     }
-    
+
     return NULL;
 }
 
@@ -228,15 +252,17 @@ void *survivor_generator(void *args) {
  * 
  * @param s Pointer to the survivor to clean up
  */
-void survivor_cleanup(Survivor *s) {
+// clang-format off
+void survivor_cleanup(Survivor *s)
+// clang-format on
+{
     // Make sure coordinates are within bounds to avoid segfault
-    if (s->coord.x >= 0 && s->coord.x < map.height && 
-        s->coord.y >= 0 && s->coord.y < map.width) {
-        
+    if (s->coord.x >= 0 && s->coord.x < map.height && s->coord.y >= 0 && s->coord.y < map.width)
+    {
+
         // Remove from map cell
         pthread_mutex_lock(&map.cells[s->coord.x][s->coord.y].survivors->lock);
-        map.cells[s->coord.x][s->coord.y].survivors->removedata(
-            map.cells[s->coord.x][s->coord.y].survivors, s);
+        map.cells[s->coord.x][s->coord.y].survivors->removedata(map.cells[s->coord.x][s->coord.y].survivors, s);
         pthread_mutex_unlock(&map.cells[s->coord.x][s->coord.y].survivors->lock);
     }
 
@@ -244,7 +270,7 @@ void survivor_cleanup(Survivor *s) {
     pthread_mutex_lock(&survivors->lock);
     survivors->removedata(survivors, s);
     pthread_mutex_unlock(&survivors->lock);
-    
+
     pthread_mutex_lock(&helpedsurvivors->lock);
     helpedsurvivors->removedata(helpedsurvivors, s);
     pthread_mutex_unlock(&helpedsurvivors->lock);

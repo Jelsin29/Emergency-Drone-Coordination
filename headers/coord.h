@@ -38,8 +38,8 @@
  * @see Map for boundary definitions
  */
 typedef struct coord {
-    int x;  /**< X coordinate (row index, 0-based from top) */
-    int y;  /**< Y coordinate (column index, 0-based from left) */
+    int x; /**< X coordinate (row index, 0-based from top) */
+    int y; /**< Y coordinate (column index, 0-based from left) */
 } Coord;
 
 /**
@@ -56,7 +56,7 @@ typedef struct coord {
  * @param y_val Y coordinate value
  * @return Coord structure with specified values
  */
-#define MAKE_COORD(x_val, y_val) ((Coord){.x = (x_val), .y = (y_val)})
+#define MAKE_COORD(x_val, y_val) ((Coord){ .x = (x_val), .y = (y_val) })
 
 /**
  * @brief Calculate Manhattan distance between two coordinates

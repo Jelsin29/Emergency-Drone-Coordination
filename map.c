@@ -75,33 +75,41 @@ Map map;
  * @see freemap() for cleanup
  * @see MapCell for cell structure details
  */
-void init_map(int height, int width) {
+void init_map(int height, int width)
+{
     // Validate input parameters
-    if (height <= 0 || width <= 0) {
+    if (height <= 0 || width <= 0)
+    {
         fprintf(stderr, "Error: Invalid map dimensions: %dx%d\n", height, width);
         exit(EXIT_FAILURE);
     }
-    
+
     printf("Initializing map with dimensions: %dx%d cells\n", height, width);
-    
+
     map.height = height;
     map.width = width;
 
     // Allocate rows (height) - array of pointers to MapCell arrays
-    map.cells = (MapCell**)malloc(sizeof(MapCell*) * height);
-    if (!map.cells) {
+    map.cells = (MapCell **)malloc(sizeof(MapCell *) * height);
+    if (!map.cells)
+    {
         perror("Failed to allocate map rows");
         exit(EXIT_FAILURE);
     }
 
     // Allocate columns (width) for each row and initialize cells
-    for (int i = 0; i < height; i++) {
-        map.cells[i] = (MapCell*)malloc(sizeof(MapCell) * width);
-        if (!map.cells[i]) {
+    for (int i = 0; i < height; i++)
+    {
+        map.cells[i] = (MapCell *)malloc(sizeof(MapCell) * width);
+        if (!map.cells[i])
+        {
             // Clean up any previously allocated rows before exiting
-            for (int cleanup_row = 0; cleanup_row < i; cleanup_row++) {
-                for (int j = 0; j < width; j++) {
-                    if (map.cells[cleanup_row][j].survivors) {
+            for (int cleanup_row = 0; cleanup_row < i; cleanup_row++)
+            {
+                for (int j = 0; j < width; j++)
+                {
+                    if (map.cells[cleanup_row][j].survivors)
+                    {
                         map.cells[cleanup_row][j].survivors->destroy(map.cells[cleanup_row][j].survivors);
                     }
                 }
@@ -113,23 +121,29 @@ void init_map(int height, int width) {
         }
 
         // Initialize each cell in this row
-        for (int j = 0; j < width; j++) {
+        for (int j = 0; j < width; j++)
+        {
             // Set cell coordinates
             map.cells[i][j].coord.x = i;
             map.cells[i][j].coord.y = j;
-            
+
             // Create a thread-safe survivor list for this cell
             // Capacity of 10 should handle typical survivor density
             map.cells[i][j].survivors = create_list(sizeof(Survivor), 10);
-            
-            if (!map.cells[i][j].survivors) {
+
+            if (!map.cells[i][j].survivors)
+            {
                 fprintf(stderr, "Failed to create survivor list for cell (%d, %d)\n", i, j);
                 // Clean up all previously created structures
-                for (int cleanup_row = 0; cleanup_row <= i; cleanup_row++) {
+                for (int cleanup_row = 0; cleanup_row <= i; cleanup_row++)
+                {
                     int cleanup_cols = (cleanup_row == i) ? j : width;
-                    for (int cleanup_col = 0; cleanup_col < cleanup_cols; cleanup_col++) {
-                        if (map.cells[cleanup_row][cleanup_col].survivors) {
-                            map.cells[cleanup_row][cleanup_col].survivors->destroy(map.cells[cleanup_row][cleanup_col].survivors);
+                    for (int cleanup_col = 0; cleanup_col < cleanup_cols; cleanup_col++)
+                    {
+                        if (map.cells[cleanup_row][cleanup_col].survivors)
+                        {
+                            map.cells[cleanup_row][cleanup_col].survivors->destroy(
+                                map.cells[cleanup_row][cleanup_col].survivors);
                         }
                     }
                     free(map.cells[cleanup_row]);
@@ -139,7 +153,7 @@ void init_map(int height, int width) {
             }
         }
     }
-    
+
     printf("Map initialization completed successfully\n");
 }
 
@@ -163,40 +177,46 @@ void init_map(int height, int width) {
  * 
  * @see init_map() for initialization
  */
-void freemap() {
-    if (!map.cells) {
+void freemap()
+{
+    if (!map.cells)
+    {
         printf("Warning: Attempting to free uninitialized map\n");
         return;
     }
-    
+
     printf("Freeing map resources...\n");
-    
+
     // Free each row and its cells
-    for (int i = 0; i < map.height; i++) {
-        if (map.cells[i]) {
+    for (int i = 0; i < map.height; i++)
+    {
+        if (map.cells[i])
+        {
             // Destroy survivor lists in each cell of this row
-            for (int j = 0; j < map.width; j++) {
-                if (map.cells[i][j].survivors) {
+            for (int j = 0; j < map.width; j++)
+            {
+                if (map.cells[i][j].survivors)
+                {
                     // Properly destroy the thread-safe list
                     map.cells[i][j].survivors->destroy(map.cells[i][j].survivors);
                     map.cells[i][j].survivors = NULL;
                 }
             }
-            
+
             // Free the row array
             free(map.cells[i]);
             map.cells[i] = NULL;
         }
     }
-    
+
     // Free the main pointer array
     free(map.cells);
     map.cells = NULL;
-    
+
     // Reset dimensions for safety
     map.height = 0;
     map.width = 0;
-    
+
     printf("Map cleanup completed\n");
 }
 
@@ -212,7 +232,8 @@ void freemap() {
  * 
  * @note This is an inline check - consider making it a macro for performance
  */
-int is_valid_coordinate(int x, int y) {
+int is_valid_coordinate(int x, int y)
+{
     return (x >= 0 && x < map.height && y >= 0 && y < map.width);
 }
 
@@ -227,8 +248,12 @@ int is_valid_coordinate(int x, int y) {
  * 
  * @warning Always check return value before dereferencing
  */
-MapCell* get_cell(int x, int y) {
-    if (!is_valid_coordinate(x, y)) {
+// clang-format off
+MapCell* get_cell(int x, int y)
+// clang-format on
+{
+    if (!is_valid_coordinate(x, y))
+    {
         return NULL;
     }
     return &map.cells[x][y];
@@ -245,18 +270,22 @@ MapCell* get_cell(int x, int y) {
  * @note This function locks each cell briefly, so it's thread-safe
  * @note Consider caching this value if called frequently
  */
-int get_total_survivor_count() {
+int get_total_survivor_count()
+{
     int total = 0;
-    
-    for (int i = 0; i < map.height; i++) {
-        for (int j = 0; j < map.width; j++) {
-            if (map.cells[i][j].survivors) {
+
+    for (int i = 0; i < map.height; i++)
+    {
+        for (int j = 0; j < map.width; j++)
+        {
+            if (map.cells[i][j].survivors)
+            {
                 pthread_mutex_lock(&map.cells[i][j].survivors->lock);
                 total += map.cells[i][j].survivors->number_of_elements;
                 pthread_mutex_unlock(&map.cells[i][j].survivors->lock);
             }
         }
     }
-    
+
     return total;
 }

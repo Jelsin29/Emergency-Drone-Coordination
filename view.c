@@ -71,6 +71,7 @@
 #define BOLD_FONT_SIZE 9
 
 // SDL globals
+// clang-format off
 SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
 SDL_Event event;
@@ -97,6 +98,7 @@ extern int rescued_count;
 extern int idle_drones;
 extern int mission_drones;
 
+//format on
 /**
  * @brief Initialize SDL window and renderer based on map dimensions plus info panel
  * 
@@ -207,25 +209,31 @@ void render_text(const char *text, int x, int y, SDL_Color color, bool use_bold)
         return;
     }
 
+    // clang-format off
     TTF_Font *current_font = use_bold ? font_bold : font;
-
+    // clang-format on
     if (!current_font)
     {
         // Fallback if font is not available - draw a simple rectangle
+        // clang-format off
         SDL_Rect text_rect = {x, y, strlen(text) * 8, 3};
+        // clang-format on
         SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
         SDL_RenderFillRect(renderer, &text_rect);
         return;
     }
 
+    // clang-format off
     SDL_Surface *surface = TTF_RenderText_Blended(current_font, text, color);
+    // clang-format on
     if (!surface)
     {
         fprintf(stderr, "TTF_RenderText_Blended Error: %s\n", TTF_GetError());
         return;
     }
-
+    // clang-format off
     SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+    // clang-format on
     if (!texture)
     {
         fprintf(stderr, "SDL_CreateTextureFromSurface Error: %s\n", SDL_GetError());
@@ -233,7 +241,7 @@ void render_text(const char *text, int x, int y, SDL_Color color, bool use_bold)
         return;
     }
 
-    SDL_Rect rect = {x, y, surface->w, surface->h};
+    SDL_Rect rect = { x, y, surface->w, surface->h };
     SDL_RenderCopy(renderer, texture, NULL, &rect);
 
     SDL_DestroyTexture(texture);
@@ -250,7 +258,9 @@ void render_text(const char *text, int x, int y, SDL_Color color, bool use_bold)
  * @param color Color for the label indicator
  * @param value Numeric value to display
  */
+// clang-format off
 void render_text_line(const char *text, int y, SDL_Color color, int value)
+// clang-format on
 {
     // Calculate the starting position for text
     int text_x = map.width * CELL_SIZE + 10; // 10px padding from panel start
@@ -269,11 +279,7 @@ void render_text_line(const char *text, int y, SDL_Color color, int value)
     SDL_RenderFillRect(renderer, &text_bg);
 
     // Draw a small colored square as a label indicator
-    SDL_Rect indicator = {
-        text_x,
-        text_y + 5,
-        10,
-        10};
+    SDL_Rect indicator = { text_x, text_y + 5, 10, 10 };
 
     SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, color.a);
     SDL_RenderFillRect(renderer, &indicator);
@@ -296,9 +302,13 @@ void update_window_title()
 {
     // Update window title with stats from controller
     char title[100];
-    snprintf(title, sizeof(title),
+    snprintf(title,
+             sizeof(title),
              "Drone Simulator | Waiting: %d | Being Helped: %d | Rescued: %d | Drones: %d",
-             waiting_count, helped_count, rescued_count, num_drones);
+             waiting_count,
+             helped_count,
+             rescued_count,
+             num_drones);
     SDL_SetWindowTitle(window, title);
 }
 
@@ -326,10 +336,7 @@ void draw_info_panel()
     SDL_RenderDrawRect(renderer, &panel_rect);
 
     // Draw vertical separator line
-    SDL_RenderDrawLine(
-        renderer,
-        map.width * CELL_SIZE, 0,
-        map.width * CELL_SIZE, window_height);
+    SDL_RenderDrawLine(renderer, map.width * CELL_SIZE, 0, map.width * CELL_SIZE, window_height);
 
     // Draw title
     SDL_Rect title_rect = {
@@ -365,9 +372,7 @@ void draw_info_panel()
     // Draw section separator
     SDL_SetRenderDrawColor(renderer, BLACK.r, BLACK.g, BLACK.b, BLACK.a);
     SDL_RenderDrawLine(
-        renderer,
-        map.width * CELL_SIZE + 10, y_pos - 15,
-        map.width * CELL_SIZE + PANEL_WIDTH - 10, y_pos - 15);
+        renderer, map.width * CELL_SIZE + 10, y_pos - 15, map.width * CELL_SIZE + PANEL_WIDTH - 10, y_pos - 15);
 
     // Idle drones - BLUE
     render_text_line("Idle Drones:", y_pos, BLUE, idle_drones);
@@ -386,9 +391,7 @@ void draw_info_panel()
     // Draw section separator
     SDL_SetRenderDrawColor(renderer, BLACK.r, BLACK.g, BLACK.b, BLACK.a);
     SDL_RenderDrawLine(
-        renderer,
-        map.width * CELL_SIZE + 10, y_pos - 15,
-        map.width * CELL_SIZE + PANEL_WIDTH - 10, y_pos - 15);
+        renderer, map.width * CELL_SIZE + 10, y_pos - 15, map.width * CELL_SIZE + PANEL_WIDTH - 10, y_pos - 15);
 
     // Legend title
     SDL_Rect legend_title = {
@@ -408,11 +411,7 @@ void draw_info_panel()
     y_pos += 40;
 
     // Survivor - RED
-    SDL_Rect survivor_icon = {
-        map.width * CELL_SIZE + 20,
-        y_pos + 5,
-        15,
-        15};
+    SDL_Rect survivor_icon = { map.width * CELL_SIZE + 20, y_pos + 5, 15, 15 };
     SDL_SetRenderDrawColor(renderer, RED.r, RED.g, RED.b, RED.a);
     SDL_RenderFillRect(renderer, &survivor_icon);
 
@@ -421,11 +420,7 @@ void draw_info_panel()
 
     // Idle drone - BLUE
     y_pos += 25;
-    SDL_Rect idle_icon = {
-        map.width * CELL_SIZE + 20,
-        y_pos + 5,
-        15,
-        15};
+    SDL_Rect idle_icon = { map.width * CELL_SIZE + 20, y_pos + 5, 15, 15 };
     SDL_SetRenderDrawColor(renderer, BLUE.r, BLUE.g, BLUE.b, BLUE.a);
     SDL_RenderFillRect(renderer, &idle_icon);
 
@@ -434,11 +429,7 @@ void draw_info_panel()
 
     // Active drone - GREEN
     y_pos += 25;
-    SDL_Rect active_icon = {
-        map.width * CELL_SIZE + 20,
-        y_pos + 5,
-        15,
-        15};
+    SDL_Rect active_icon = { map.width * CELL_SIZE + 20, y_pos + 5, 15, 15 };
     SDL_SetRenderDrawColor(renderer, GREEN.r, GREEN.g, GREEN.b, GREEN.a);
     SDL_RenderFillRect(renderer, &active_icon);
 
@@ -448,10 +439,7 @@ void draw_info_panel()
     // Mission line - GREEN
     y_pos += 25;
     SDL_SetRenderDrawColor(renderer, GREEN.r, GREEN.g, GREEN.b, GREEN.a);
-    SDL_RenderDrawLine(
-        renderer,
-        map.width * CELL_SIZE + 20, y_pos + 12,
-        map.width * CELL_SIZE + 40, y_pos + 12);
+    SDL_RenderDrawLine(renderer, map.width * CELL_SIZE + 20, y_pos + 12, map.width * CELL_SIZE + 40, y_pos + 12);
 
     // Legend text
     render_text("Mission Path", map.width * CELL_SIZE + 45, y_pos + 5, WHITE, false);
@@ -501,11 +489,14 @@ void draw_drones()
     pthread_mutex_lock(&drones->lock);
 
     // Iterate through all drones in the list
+    // clang-format off
     Node *current = drones->head;
+    // clang-format on
     while (current != NULL)
     {
+        // clang-format off
         Drone *d = (Drone *)current->data;
-
+        // clang-format on
         // Lock this specific drone while drawing it
         pthread_mutex_lock(&d->lock);
 
@@ -522,12 +513,11 @@ void draw_drones()
             if (d->status == ON_MISSION)
             {
                 SDL_SetRenderDrawColor(renderer, GREEN.r, GREEN.g, GREEN.b, GREEN.a);
-                SDL_RenderDrawLine(
-                    renderer,
-                    d->coord.y * CELL_SIZE + CELL_SIZE / 2,
-                    d->coord.x * CELL_SIZE + CELL_SIZE / 2,
-                    d->target.y * CELL_SIZE + CELL_SIZE / 2,
-                    d->target.x * CELL_SIZE + CELL_SIZE / 2);
+                SDL_RenderDrawLine(renderer,
+                                   d->coord.y * CELL_SIZE + CELL_SIZE / 2,
+                                   d->coord.x * CELL_SIZE + CELL_SIZE / 2,
+                                   d->target.y * CELL_SIZE + CELL_SIZE / 2,
+                                   d->target.x * CELL_SIZE + CELL_SIZE / 2);
             }
         }
 
@@ -575,17 +565,13 @@ void draw_grid()
     // Draw horizontal grid lines
     for (int i = 0; i <= map.height; i++)
     {
-        SDL_RenderDrawLine(renderer,
-                           0, i * CELL_SIZE,
-                           map.width * CELL_SIZE, i * CELL_SIZE);
+        SDL_RenderDrawLine(renderer, 0, i * CELL_SIZE, map.width * CELL_SIZE, i * CELL_SIZE);
     }
 
     // Draw vertical grid lines
     for (int j = 0; j <= map.width; j++)
     {
-        SDL_RenderDrawLine(renderer,
-                           j * CELL_SIZE, 0,
-                           j * CELL_SIZE, window_height);
+        SDL_RenderDrawLine(renderer, j * CELL_SIZE, 0, j * CELL_SIZE, window_height);
     }
 }
 
@@ -670,26 +656,26 @@ void draw_diagnostic()
         int x, y;
         switch (i)
         {
-        case 0:
-            x = 5;
-            y = 5;
-            break; // Top left
-        case 1:
-            x = 5;
-            y = 25;
-            break; // Top right
-        case 2:
-            x = 20;
-            y = 15;
-            break; // Center
-        case 3:
-            x = 35;
-            y = 5;
-            break; // Bottom left
-        case 4:
-            x = 35;
-            y = 25;
-            break; // Bottom right
+            case 0:
+                x = 5;
+                y = 5;
+                break; // Top left
+            case 1:
+                x = 5;
+                y = 25;
+                break; // Top right
+            case 2:
+                x = 20;
+                y = 15;
+                break; // Center
+            case 3:
+                x = 35;
+                y = 5;
+                break; // Bottom left
+            case 4:
+                x = 35;
+                y = 25;
+                break; // Bottom right
         }
 
         draw_cell(x, y, RED);
@@ -709,8 +695,7 @@ int check_events()
     {
         if (event.type == SDL_QUIT)
             return 1;
-        if (event.type == SDL_KEYDOWN &&
-            event.key.keysym.sym == SDLK_ESCAPE)
+        if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE)
             return 1;
     }
     return 0;

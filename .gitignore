@@ -401,3 +401,40 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# Build artifacts
+*.o
+*.so
+*.a
+drone_simulator
+drone_client
+tests/listtest
+tests/sdltest
+tests/multi_drone_test
+tests/server_throughput_test
+
+# Performance data
+*.csv
+*.json
+
+# Documentation
+docs/
+latex/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Valgrind output
+vgcore.*
+core.*
+
+# Temporary files
+*.tmp
+*.temp

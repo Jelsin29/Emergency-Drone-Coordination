@@ -73,8 +73,10 @@
  * @warning Always validate coordinates before cell access
  */
 typedef struct mapcell {
-    Coord coord;      /**< Immutable coordinates of this cell (x=row, y=column) */
+    Coord coord; /**< Immutable coordinates of this cell (x=row, y=column) */
+    // clang-format off
     List *survivors;  /**< Thread-safe list of survivors currently in this cell */
+    // clang-format on
 } MapCell;
 
 /**
@@ -103,9 +105,11 @@ typedef struct mapcell {
  * @warning Direct field access should be avoided - use accessor functions
  */
 typedef struct map {
-    int height;        /**< Number of rows in the grid (X-axis dimension) */
-    int width;         /**< Number of columns in the grid (Y-axis dimension) */
+    int height; /**< Number of rows in the grid (X-axis dimension) */
+    int width;  /**< Number of columns in the grid (Y-axis dimension) */
+    // clang-format off
     MapCell **cells;   /**< 2D array of map cells [height][width] */
+    // clang-format on
 } Map;
 
 /** @} */ // end of map_structures group
@@ -279,8 +283,9 @@ int is_valid_coordinate(int x, int y);
  * 
  * @see is_valid_coordinate() for validation logic
  */
+// clang-format off
 MapCell* get_cell(int x, int y);
-
+// clang-format on
 /**
  * @brief Calculate total number of survivors across all map cells
  * 

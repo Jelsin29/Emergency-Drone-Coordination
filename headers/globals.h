@@ -67,6 +67,7 @@ extern struct map map;
  * @see create_list() for initialization
  * @see Survivor for element structure
  */
+// clang-format off
 extern struct list *survivors;
 
 /**
@@ -99,6 +100,8 @@ extern struct list *helpedsurvivors;
  * @see Drone for element structure and synchronization details
  */
 extern struct list *drones;
+
+// clang-format on
 
 /**
  * @defgroup system_constants System Constants

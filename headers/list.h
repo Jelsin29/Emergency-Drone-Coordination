@@ -19,10 +19,10 @@
  * @brief Structure representing a node in the linked list
  */
 typedef struct node {
-    struct node *prev;        /**< Pointer to previous node */
-    struct node *next;        /**< Pointer to next node */
-    char occupied;            /**< Flag indicating if the node is used (1) or free (0) */
-    char data[];              /**< Flexible array member for storing data */
+    struct node *prev; /**< Pointer to previous node */
+    struct node *next; /**< Pointer to next node */
+    char occupied;     /**< Flag indicating if the node is used (1) or free (0) */
+    char data[];       /**< Flexible array member for storing data */
 } Node;
 
 /**
@@ -30,32 +30,34 @@ typedef struct node {
  * @brief Thread-safe doubly linked list with synchronized access
  */
 typedef struct list {
-    Node *head;               /**< Pointer to the first node in the list */
-    Node *tail;               /**< Pointer to the last node in the list */
-    int number_of_elements;   /**< Current number of elements in the list */
-    int capacity;             /**< Maximum number of elements the list can hold */
-    int datasize;             /**< Size of each data element in bytes */
-    int nodesize;             /**< Total size of node including header and data */
-    char *startaddress;       /**< Start address of allocated memory block */
-    char *endaddress;         /**< End address of allocated memory block */
-    Node *lastprocessed;      /**< Last node that was processed */
-    Node *free_list;          /**< List of free nodes available for reuse */
+    //clang-format off
+    Node *head;             /**< Pointer to the first node in the list */
+    Node *tail;             /**< Pointer to the last node in the list */
+    int number_of_elements; /**< Current number of elements in the list */
+    int capacity;           /**< Maximum number of elements the list can hold */
+    int datasize;           /**< Size of each data element in bytes */
+    int nodesize;           /**< Total size of node including header and data */
+    char *startaddress;     /**< Start address of allocated memory block */
+    char *endaddress;       /**< End address of allocated memory block */
+    Node *lastprocessed;    /**< Last node that was processed */
+    Node *free_list;        /**< List of free nodes available for reuse */
 
-    pthread_mutex_t lock;     /**< Mutex for thread-safe access */
-    sem_t elements_sem;       /**< Semaphore counting available elements */
-    sem_t spaces_sem;         /**< Semaphore counting free spaces */
-    
+    pthread_mutex_t lock; /**< Mutex for thread-safe access */
+    sem_t elements_sem;   /**< Semaphore counting available elements */
+    sem_t spaces_sem;     /**< Semaphore counting free spaces */
+
     /**< Function pointers for list operations */
     Node *(*add)(struct list *list, void *data);
-    int  (*removedata)(struct list *list, void *data);
-    int (*removenode)(struct list *list, Node *node); 
-    void *(*pop)(struct list *list, void* dest);
+    int (*removedata)(struct list *list, void *data);
+    int (*removenode)(struct list *list, Node *node);
+    void *(*pop)(struct list *list, void *dest);
     void *(*peek)(struct list *list);
     void (*destroy)(struct list *list);
-    void (*printlist)(struct list *list, void (*print)(void*));
-    void (*printlistfromtail)(struct list *list, void (*print)(void*));
+    void (*printlist)(struct list *list, void (*print)(void *));
+    void (*printlistfromtail)(struct list *list, void (*print)(void *));
 
-    struct list *self;        /**< Self reference for consistency checks */
+    struct list *self; /**< Self reference for consistency checks */
+    //clang-format on
 } List;
 
 /**
@@ -64,6 +66,7 @@ typedef struct list {
  * @param capacity Maximum number of elements the list can hold
  * @return Pointer to the new list or NULL on failure
  */
+// clang-format off
 List *create_list(size_t datasize, int capacity);
 
 /**
@@ -124,5 +127,5 @@ void printlist(List *list, void (*print)(void*));
  * @param print Function to print each element
  */
 void printlistfromtail(List *list, void (*print)(void*));
-
+// clang-format on
 #endif // LIST_H

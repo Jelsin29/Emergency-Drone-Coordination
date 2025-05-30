@@ -48,11 +48,12 @@
  * @{
  */
 
+//clang-format off
 /** @brief Main SDL window instance for the application */
-extern SDL_Window* window;
+extern SDL_Window *window;
 
 /** @brief SDL renderer for all drawing operations */
-extern SDL_Renderer* renderer;
+extern SDL_Renderer *renderer;
 
 /** @brief Current window width in pixels */
 extern int window_width;
@@ -319,7 +320,7 @@ extern void draw_info_panel();
  * @note Empty strings are handled gracefully
  * @warning Font fallback may result in simplified rendering
  */
-extern void render_text(const char* text, int x, int y, SDL_Color color, bool use_bold);
+extern void render_text(const char *text, int x, int y, SDL_Color color, bool use_bold);
 
 /**
  * @brief Render a formatted text line in the info panel
@@ -345,7 +346,7 @@ extern void render_text(const char* text, int x, int y, SDL_Color color, bool us
  * 
  * @note Line height is standardized at TEXT_HEIGHT pixels
  */
-extern void render_text_line(const char* text, int y, SDL_Color color, int value);
+extern void render_text_line(const char *text, int y, SDL_Color color, int value);
 
 /** @} */ // end of ui_components group
 
@@ -408,7 +409,7 @@ extern int draw_map();
  * 
  * @note Used for development and testing only
  */
-extern void draw_test_pattern(); 
+extern void draw_test_pattern();
 
 /**
  * @brief Draw diagnostic graphics for troubleshooting
@@ -488,7 +489,7 @@ extern int check_events();
  * @note Handles NULL pointers gracefully
  */
 extern void quit_all();
-
+// clang-format on
 /** @} */ // end of cleanup group
 
 /** @} */ // end of visualization group

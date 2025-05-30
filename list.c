@@ -54,6 +54,7 @@
  * @param list The list to search in
  * @return Pointer to an unoccupied node or NULL if none available
  */
+// clang-format off
 static Node *find_memcell_fornode(List *list);
 
 /**
@@ -71,44 +72,53 @@ static Node *get_free_node(List *list);
  * @param capacity Maximum number of nodes can be stored in this list
  * @return Pointer to the new list or NULL on failure
  */
-List *create_list(size_t datasize, int capacity) {
+List *create_list(size_t datasize, int capacity)
+// clang-format on
+{
+    // clang-format off
     List *list = malloc(sizeof(List));
-    if (!list) {
+    // clang-format on
+    if (!list)
+    {
         perror("Failed to allocate memory for list");
         return NULL;
     }
-    
+
     memset(list, 0, sizeof(List));
 
     // Initialize mutex
     pthread_mutex_init(&list->lock, NULL);
-    
+
     // Initialize semaphores for overflow/underflow protection
-    sem_init(&list->elements_sem, 0, 0);  // Initially empty
-    sem_init(&list->spaces_sem, 0, capacity);  // Initially all spaces available
+    sem_init(&list->elements_sem, 0, 0);      // Initially empty
+    sem_init(&list->spaces_sem, 0, capacity); // Initially all spaces available
 
     list->datasize = datasize;
     list->nodesize = sizeof(Node) + datasize;
 
     list->startaddress = malloc(list->nodesize * capacity);
-    if (!list->startaddress) {
+    if (!list->startaddress)
+    {
         perror("Failed to allocate memory for list nodes");
         free(list);
         return NULL;
     }
-    
+
     list->endaddress = list->startaddress + (list->nodesize * capacity);
     memset(list->startaddress, 0, list->nodesize * capacity);
 
     list->lastprocessed = (Node *)list->startaddress;
-    list->free_list = NULL;  // Initialize the free list to NULL
+    list->free_list = NULL; // Initialize the free list to NULL
 
     list->number_of_elements = 0;
     list->capacity = capacity;
-    
+
     // Initialize all nodes as free and add them to the free list
-    for (int i = 0; i < capacity; i++) {
+    for (int i = 0; i < capacity; i++)
+    {
+        // clang-format off
         Node *node = (Node *)(list->startaddress + (i * list->nodesize));
+        // clang-format on
         node->occupied = 0;
         node->next = list->free_list;
         node->prev = NULL;
@@ -138,27 +148,47 @@ List *create_list(size_t datasize, int capacity) {
  * @param list The list to search in
  * @return Pointer to an unoccupied node or NULL if none available
  */
-static Node *find_memcell_fornode(List *list) {
+// clang-format off
+static Node *find_memcell_fornode(List *list)
+// clang-format on
+{
+    // clang-format off
     Node *node = NULL;
     /*search lastprocessed---end*/
     Node *temp = list->lastprocessed;
-    while ((char *)temp < list->endaddress) {
-        if (temp->occupied == 0) {
+    while ((char *)temp < list->endaddress)
+    // clang-format on
+    {
+        if (temp->occupied == 0)
+        {
             node = temp;
             break;
-        } else {
+        }
+        else
+        {
+            // clang-format off
             temp = (Node *)((char *)temp + list->nodesize);
+            // clang-format on
         }
     }
-    if (node == NULL) {
+    if (node == NULL)
+    {
         /*search startaddress--lastprocessed*/
+        // clang-format off
         temp = (Node *)list->startaddress;
-        while (temp < list->lastprocessed) {
-            if (temp->occupied == 0) {
+        // clang-format on
+        while (temp < list->lastprocessed)
+        {
+            if (temp->occupied == 0)
+            {
                 node = temp;
                 break;
-            } else {
+            }
+            else
+            {
+                // clang-format off
                 temp = (Node *)((char *)temp + list->nodesize);
+                // clang-format on
             }
         }
     }
@@ -174,10 +204,16 @@ static Node *find_memcell_fornode(List *list) {
  * @param list The list to get a node from
  * @return Pointer to a free node or NULL if none available
  */
-static Node *get_free_node(List *list) {
+// clang-format off
+static Node *get_free_node(List *list)
+// clang-format on
+{
     // First try to get a node from the free list
-    if (list->free_list) {
+    if (list->free_list)
+    {
+        // clang-format off
         Node *node = list->free_list;
+        // clang-format on
         list->free_list = node->next;
         if (list->free_list)
             list->free_list->prev = NULL;
@@ -185,7 +221,7 @@ static Node *get_free_node(List *list) {
         node->prev = NULL;
         return node;
     }
-    
+
     // If free list is empty, use the original approach
     return find_memcell_fornode(list);
 }
@@ -200,11 +236,17 @@ static Node *get_free_node(List *list) {
  * @param data A data address, its size is determined from list->datasize
  * @return Pointer to the new node or NULL on failure
  */
-Node *add(List *list, void *data) {
+// clang-format off
+Node *add(List *list, void *data)
+// clang-format on
+{
+    // clang-format off
     Node *node = NULL;
+    // clang-format on
 
     // Wait for an available space (semaphore)
-    if (sem_wait(&list->spaces_sem) != 0) {
+    if (sem_wait(&list->spaces_sem) != 0)
+    {
         perror("sem_wait failed in add");
         return NULL;
     }
@@ -213,7 +255,8 @@ Node *add(List *list, void *data) {
     pthread_mutex_lock(&list->lock);
 
     /*Check capacity (redundant with semaphore but kept for safety)*/
-    if (list->number_of_elements >= list->capacity) {
+    if (list->number_of_elements >= list->capacity)
+    {
         pthread_mutex_unlock(&list->lock);
         sem_post(&list->spaces_sem); // Release the space we waited for
         perror("list is full!");
@@ -223,14 +266,18 @@ Node *add(List *list, void *data) {
     /*Get a free node from the free list or memory*/
     node = get_free_node(list);
 
-    if (node != NULL) {
+    if (node != NULL)
+    {
         /*create_node*/
         node->occupied = 1;
         memcpy(node->data, data, list->datasize);
 
         /*change new node into head*/
-        if (list->head != NULL) {
+        if (list->head != NULL)
+        {
+            // clang-format off
             Node *oldhead = list->head;
+            // clang-format on
             oldhead->prev = node;
             node->prev = NULL;
             node->next = oldhead;
@@ -239,13 +286,16 @@ Node *add(List *list, void *data) {
         list->head = node;
         list->lastprocessed = node;
         list->number_of_elements += 1;
-        if (list->tail == NULL) {
+        if (list->tail == NULL)
+        {
             list->tail = list->head;
         }
-        
+
         // Signal that we have an element
         sem_post(&list->elements_sem);
-    } else {
+    }
+    else
+    {
         pthread_mutex_unlock(&list->lock);
         sem_post(&list->spaces_sem); // Release the space we waited for
         perror("Failed to find free node!");
@@ -266,33 +316,42 @@ Node *add(List *list, void *data) {
  * @param data Pointer to data to match and remove
  * @return 0 on success, 1 if node not found
  */
-int removedata(List *list, void *data) {
+int removedata(List *list, void *data)
+{
     // Lock the list during operation
     pthread_mutex_lock(&list->lock);
-    
+    // clang-format off
     Node *temp = list->head;
-    while (temp != NULL &&
-           memcmp(temp->data, data, list->datasize) != 0) {
+    // clang-format on
+    while (temp != NULL && memcmp(temp->data, data, list->datasize) != 0)
+    {
         temp = temp->next;
     }
-    
+
     int result = 1; // Default: not found
-    
-    if (temp != NULL) {
+
+    if (temp != NULL)
+    {
+        // clang-format off
         Node *prevnode = temp->prev;
         Node *nextnode = temp->next;
-        if (prevnode != NULL) {
+        // clang-format on
+        if (prevnode != NULL)
+        {
             prevnode->next = nextnode;
         }
-        if (nextnode != NULL) {
+        if (nextnode != NULL)
+        {
             nextnode->prev = prevnode;
         }
 
-        if (temp == list->head) {
+        if (temp == list->head)
+        {
             list->head = nextnode;
         }
-        
-        if (temp == list->tail) {
+
+        if (temp == list->tail)
+        {
             list->tail = prevnode;
         }
 
@@ -302,16 +361,16 @@ int removedata(List *list, void *data) {
         if (list->free_list)
             list->free_list->prev = temp;
         list->free_list = temp;
-        
+
         temp->occupied = 0;
         list->number_of_elements--;
         list->lastprocessed = temp;
         result = 0; // Success
-        
+
         // Signal that we have a space
         sem_post(&list->spaces_sem);
     }
-    
+
     pthread_mutex_unlock(&list->lock);
     return result;
 }
@@ -325,53 +384,67 @@ int removedata(List *list, void *data) {
  * @param dest Address to copy data to (can be NULL)
  * @return If there is data, it returns address of dest; else it returns NULL
  */
-void *pop(List *list, void *dest) {
+// clang-format off
+void *pop(List *list, void *dest)
+// clang-format on
+{
     // Wait for an element to be available
-    if (sem_wait(&list->elements_sem) != 0) {
+    if (sem_wait(&list->elements_sem) != 0)
+    {
         perror("sem_wait failed in pop");
         return NULL;
     }
-    
+
     pthread_mutex_lock(&list->lock);
-    
+
+    // clang-format off
     void *result = NULL;
-    
-    if (list->head != NULL) {
+    // clang-format on
+
+    if (list->head != NULL)
+    {
+        // clang-format off
         Node *node = list->head;
-        
+        // clang-format on
         // Update the head pointer
         list->head = node->next;
-        if (list->head != NULL) {
+        if (list->head != NULL)
+        {
             list->head->prev = NULL;
-        } else {
+        }
+        else
+        {
             // List is now empty
             list->tail = NULL;
         }
-        
+
         // Add the node to the free list
         node->next = list->free_list;
         node->prev = NULL;
         if (list->free_list)
             list->free_list->prev = node;
         list->free_list = node;
-        
+
         node->occupied = 0;
         list->number_of_elements--;
         list->lastprocessed = node;
-        
+
         // Copy data if destination is provided
-        if (dest != NULL) {
+        if (dest != NULL)
+        {
             memcpy(dest, node->data, list->datasize);
             result = dest;
         }
-        
+
         // Signal that we have a space
         sem_post(&list->spaces_sem);
-    } else {
+    }
+    else
+    {
         // Should never happen due to semaphore, but just in case
         sem_post(&list->elements_sem); // Put the element back since we didn't use it
     }
-    
+
     pthread_mutex_unlock(&list->lock);
     return result;
 }
@@ -384,14 +457,19 @@ void *pop(List *list, void *dest) {
  * @param list The list to peek at
  * @return Address of head->data or NULL if list is empty
  */
-void *peek(List *list) {
+// clang-format off
+void *peek(List *list)
+// clang-format on
+{
     pthread_mutex_lock(&list->lock);
-    
+    // clang-format off
     void *result = NULL;
-    if (list->head != NULL) {
+    // clang-format on
+    if (list->head != NULL)
+    {
         result = list->head->data;
     }
-    
+
     pthread_mutex_unlock(&list->lock);
     return result;
 }
@@ -405,50 +483,60 @@ void *peek(List *list) {
  * @param node The node to remove
  * @return 0 on success, 1 if node not found
  */
-int removenode(List *list, Node *node) {
+// clang-format off
+int removenode(List *list, Node *node)
+// clang-format on
+{
     pthread_mutex_lock(&list->lock);
-    
+
     int result = 1; // Default: failure
-    
-    if (node != NULL) {
+
+    if (node != NULL)
+    {
+        // clang-format off
         Node *prevnode = node->prev;
         Node *nextnode = node->next;
-        
-        if (prevnode != NULL) {
+        // clang-format on
+
+        if (prevnode != NULL)
+        {
             prevnode->next = nextnode;
         }
-        
-        if (nextnode != NULL) {
+
+        if (nextnode != NULL)
+        {
             nextnode->prev = prevnode;
         }
-        
+
         // Add the node to the free list
         node->next = list->free_list;
         node->prev = NULL;
         if (list->free_list)
             list->free_list->prev = node;
         list->free_list = node;
-        
+
         node->occupied = 0;
-        
+
         list->number_of_elements--;
 
         /*update head, tail, lastprocess*/
-        if (node == list->tail) {
+        if (node == list->tail)
+        {
             list->tail = prevnode;
         }
 
-        if (node == list->head) {
+        if (node == list->head)
+        {
             list->head = nextnode;
         }
-        
+
         list->lastprocessed = node;
         result = 0; // Success
-        
+
         // Signal that we have a space
         sem_post(&list->spaces_sem);
     }
-    
+
     pthread_mutex_unlock(&list->lock);
     return result;
 }
@@ -460,16 +548,20 @@ int removenode(List *list, Node *node) {
  *
  * @param list The list to destroy
  */
-void destroy(List *list) {
+// clang-format off
+void destroy(List *list)
+// clang-format on
+{
     pthread_mutex_destroy(&list->lock);
     sem_destroy(&list->elements_sem);
     sem_destroy(&list->spaces_sem);
-    
-    if (list->startaddress) {
+
+    if (list->startaddress)
+    {
         free(list->startaddress);
         list->startaddress = NULL;
     }
-    
+
     free(list);
 }
 
@@ -479,15 +571,21 @@ void destroy(List *list) {
  * @param list The list to print
  * @param print Function to print each element
  */
-void printlist(List *list, void (*print)(void *)) {
+// clang-format off
+void printlist(List *list, void (*print)(void *))
+// clang-format on
+{
     pthread_mutex_lock(&list->lock);
-    
+
+    // clang-format off
     Node *temp = list->head;
-    while (temp != NULL) {
+    // clang-format on
+    while (temp != NULL)
+    {
         print(temp->data);
         temp = temp->next;
     }
-    
+
     pthread_mutex_unlock(&list->lock);
 }
 
@@ -497,14 +595,19 @@ void printlist(List *list, void (*print)(void *)) {
  * @param list The list to print
  * @param print Function to print each element
  */
-void printlistfromtail(List *list, void (*print)(void *)) {
+// clang-format off
+void printlistfromtail(List *list, void (*print)(void *))
+// clang-format on
+{
     pthread_mutex_lock(&list->lock);
-    
+    // clang-format off
     Node *temp = list->tail;
-    while (temp != NULL) {
+    // clang-format on
+    while (temp != NULL)
+    {
         print(temp->data);
         temp = temp->prev;
     }
-    
+
     pthread_mutex_unlock(&list->lock);
 }

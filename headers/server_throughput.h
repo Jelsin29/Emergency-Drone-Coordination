@@ -85,48 +85,48 @@ typedef struct {
      *  Tracking different types of messages handled by the server
      *  @{
      */
-    unsigned long status_updates_received;  /**< Number of drone status update messages received */
-    unsigned long missions_assigned;        /**< Number of mission assignment messages sent to drones */
-    unsigned long heartbeats_sent;          /**< Number of heartbeat messages sent to maintain connections */
-    unsigned long messages_processed;       /**< Total number of messages processed (all types combined) */
-    unsigned long error_count;              /**< Number of errors encountered during operation */
+    unsigned long status_updates_received; /**< Number of drone status update messages received */
+    unsigned long missions_assigned;       /**< Number of mission assignment messages sent to drones */
+    unsigned long heartbeats_sent;         /**< Number of heartbeat messages sent to maintain connections */
+    unsigned long messages_processed;      /**< Total number of messages processed (all types combined) */
+    unsigned long error_count;             /**< Number of errors encountered during operation */
     /** @} */
-    
+
     /** @name Data Throughput Tracking
      *  Monitoring network bandwidth utilization
      *  @{
      */
-    unsigned long total_bytes_received;     /**< Total bytes received from drone clients */
-    unsigned long total_bytes_sent;         /**< Total bytes sent to drone clients */
+    unsigned long total_bytes_received; /**< Total bytes received from drone clients */
+    unsigned long total_bytes_sent;     /**< Total bytes sent to drone clients */
     /** @} */
-    
+
     /** @name Connection Management
      *  Tracking drone client connections over time
      *  @{
      */
-    unsigned long active_connections;       /**< Currently active drone connections */
-    unsigned long total_connections;        /**< Total number of connections established since startup */
-    unsigned long disconnections;           /**< Number of connections that have been closed */
+    unsigned long active_connections; /**< Currently active drone connections */
+    unsigned long total_connections;  /**< Total number of connections established since startup */
+    unsigned long disconnections;     /**< Number of connections that have been closed */
     /** @} */
-    
+
     /** @name Response Time Analysis
      *  Measuring system responsiveness and latency
      *  @{
      */
-    double total_response_time_ms;          /**< Cumulative response time for averaging calculations */
-    unsigned long response_count;           /**< Number of response time measurements taken */
-    double max_response_time_ms;            /**< Maximum response time observed */
-    double min_response_time_ms;            /**< Minimum response time observed */
+    double total_response_time_ms; /**< Cumulative response time for averaging calculations */
+    unsigned long response_count;  /**< Number of response time measurements taken */
+    double max_response_time_ms;   /**< Maximum response time observed */
+    double min_response_time_ms;   /**< Minimum response time observed */
     /** @} */
-    
+
     /** @name Timing Infrastructure
      *  Time tracking for performance calculations
      *  @{
      */
-    struct timespec start_time;             /**< System startup timestamp for elapsed time calculations */
-    struct timespec current_time;           /**< Most recent timestamp (updated periodically) */
+    struct timespec start_time;   /**< System startup timestamp for elapsed time calculations */
+    struct timespec current_time; /**< Most recent timestamp (updated periodically) */
     /** @} */
-    
+
     /** @name Peak Performance Tracking
      *  Recording maximum performance levels achieved
      *  @{
@@ -134,20 +134,22 @@ typedef struct {
     unsigned long peak_messages_per_second; /**< Highest message processing rate observed */
     unsigned long peak_connections;         /**< Maximum number of simultaneous connections */
     /** @} */
-    
+
     /** @name Synchronization and Control
      *  Thread safety and monitoring control
      *  @{
      */
-    pthread_mutex_t metrics_lock;           /**< Mutex protecting all metric fields from concurrent access */
-    int is_monitoring;                      /**< Flag controlling whether monitoring thread continues running */
+    pthread_mutex_t metrics_lock; /**< Mutex protecting all metric fields from concurrent access */
+    int is_monitoring;            /**< Flag controlling whether monitoring thread continues running */
     /** @} */
-    
+
     /** @name Output and Logging
      *  File handling for persistent metrics storage
      *  @{
      */
+    // clang-format off
     FILE* log_file;                         /**< File handle for CSV output logging (NULL if disabled) */
+    // clang-format on
     /** @} */
 } PerfMetrics;
 
@@ -216,6 +218,7 @@ extern PerfMetrics metrics;
  * 
  * @see start_perf_monitor() for automated background monitoring
  */
+// clang-format off
 void init_perf_monitor(const char* log_filename);
 
 /** @} */ // end of metrics_initialization group
@@ -571,6 +574,7 @@ void stop_perf_monitor(pthread_t monitor_thread);
  * @see Standard JSON format for maximum compatibility
  */
 void export_metrics_json(const char* filename);
+// clang-format on
 
 /** @} */ // end of metrics_export group
 

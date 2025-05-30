@@ -89,11 +89,11 @@
  * @warning Status changes must be synchronized with drone operations
  */
 typedef struct survivor {
-    int status;                 /**< Current rescue status (0=waiting, 1=being helped, 2=rescued) */
-    Coord coord;                /**< Current location on the map grid */
-    struct tm discovery_time;   /**< Timestamp when survivor was first detected */
-    struct tm helped_time;      /**< Timestamp when rescue was completed */
-    char info[25];              /**< Identifier string for tracking purposes */
+    int status;               /**< Current rescue status (0=waiting, 1=being helped, 2=rescued) */
+    Coord coord;              /**< Current location on the map grid */
+    struct tm discovery_time; /**< Timestamp when survivor was first detected */
+    struct tm helped_time;    /**< Timestamp when rescue was completed */
+    char info[25];            /**< Identifier string for tracking purposes */
 } Survivor;
 
 /** @} */ // end of survivor_structures group
@@ -119,6 +119,7 @@ typedef struct survivor {
  * @note Array size is static for performance predictability
  * @warning Always use survivors_mutex when accessing this array
  */
+// clang-format off
 extern Survivor *survivor_array;
 
 /** 
@@ -354,7 +355,7 @@ void *survivor_generator(void *args);
  * @warning Coordinate bounds are checked to prevent segmentation faults
  */
 void survivor_cleanup(Survivor *s);
-
+// clang-format off
 /** @} */ // end of survivor_cleanup group
 
 /** @} */ // end of simulation group

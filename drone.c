@@ -58,7 +58,7 @@
 #include "headers/globals.h"
 #include "headers/server_throughput.h"
 #include "headers/list.h"
-#include "headers/survivor.h"  // Added include for survivor-related variables
+#include "headers/survivor.h" // Added include for survivor-related variables
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>
@@ -85,7 +85,9 @@ int num_drones = 20;
  * @param arg Unused thread parameter
  * @return NULL when thread terminates
  */
+// clang-format off
 void *drone_server(void *arg)
+// clang-format on
 {
     (void)arg;
 
@@ -96,7 +98,7 @@ void *drone_server(void *arg)
         perf_record_error();
         return NULL;
     }
-    
+
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
     server_addr.sin_addr.s_addr = INADDR_ANY;
@@ -110,15 +112,16 @@ void *drone_server(void *arg)
         close(server_fd);
         return NULL;
     }
-
+    // clang-format off
     if (bind(server_fd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
+    // clang-format on
     {
         perror("Bind failed");
         perf_record_error();
         close(server_fd);
         return NULL;
     }
-    
+
     if (listen(server_fd, 3) < 0)
     {
         perror("Listen failed");
@@ -126,31 +129,34 @@ void *drone_server(void *arg)
         close(server_fd);
         return NULL;
     }
-    
+
     printf("Drone server listening on port 8080...\n");
-    
+
     while (1)
     {
         int new_socket;
         struct sockaddr_in client_addr;
         socklen_t addr_len = sizeof(client_addr);
-        
+        // clang-format off
         if ((new_socket = accept(server_fd, (struct sockaddr *)&client_addr, &addr_len)) < 0)
+        // clang-format on
         {
             perror("Accept failed");
             perf_record_error();
             continue;
         }
-        
-        printf("New drone connection accepted from %s:%d\n", 
-               inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
-        
+
+        printf(
+            "New drone connection accepted from %s:%d\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+
         // Record new connection
         perf_record_connection(1);
 
         // Handle the new connection in a separate thread
         pthread_t client_thread;
+        // clang-format off
         int *socket_ptr = malloc(sizeof(int));
+        // clang-format on
         if (socket_ptr == NULL)
         {
             perror("Memory allocation failed");
@@ -159,9 +165,11 @@ void *drone_server(void *arg)
             perf_record_connection(0); // Record failed connection cleanup
             continue;
         }
+        // clang-format off
         *socket_ptr = new_socket;
         
         if (pthread_create(&client_thread, NULL, handle_drone_client, (void *)socket_ptr) != 0)
+        // clang-format on
         {
             perror("Failed to create client thread");
             perf_record_error();
@@ -170,10 +178,10 @@ void *drone_server(void *arg)
             perf_record_connection(0);
             continue;
         }
-        
+
         pthread_detach(client_thread); // Detach thread to auto-cleanup
     }
-    
+
     close(server_fd);
     return NULL;
 }
@@ -187,7 +195,9 @@ void *drone_server(void *arg)
  * @param arg Pointer to socket descriptor
  * @return NULL when thread terminates
  */
+// clang-format off
 void *handle_drone_client(void *arg)
+// clang-format on
 {
     int sock = *((int *)arg);
     free(arg); // Free the allocated memory for the socket pointer
@@ -205,7 +215,8 @@ void *handle_drone_client(void *arg)
     {
         if (bytes_received == 0)
             printf("Client disconnected before handshake\n");
-        else {
+        else
+        {
             perror("Error receiving handshake");
             perf_record_error();
         }
@@ -219,7 +230,9 @@ void *handle_drone_client(void *arg)
     perf_record_status_update(bytes_received);
 
     // Parse the received JSON data
+    // clang-format off
     struct json_object *parsed_json = json_tokener_parse(buffer);
+    // clang-format on
     if (parsed_json == NULL)
     {
         printf("Failed to parse JSON data\n");
@@ -230,7 +243,9 @@ void *handle_drone_client(void *arg)
     }
 
     // Verify it's a handshake message
+    // clang-format off
     struct json_object *type_obj;
+    // clang-format on
     if (!json_object_object_get_ex(parsed_json, "type", &type_obj) ||
         strcmp(json_object_get_string(type_obj), "HANDSHAKE") != 0)
     {
@@ -252,7 +267,9 @@ void *handle_drone_client(void *arg)
     pthread_mutex_unlock(&drones->lock);
 
     // Get drone status
+    // clang-format off
     struct json_object *status_obj;
+    // clang-format on
     if (json_object_object_get_ex(parsed_json, "status", &status_obj))
     {
         const char *status_str = json_object_get_string(status_obj);
@@ -269,12 +286,15 @@ void *handle_drone_client(void *arg)
     }
 
     // Get drone coordinates
+    // clang-format off
     struct json_object *coord_obj;
+    // clang-format on
     if (json_object_object_get_ex(parsed_json, "coord", &coord_obj))
     {
+        // clang-format off
         struct json_object *x_obj, *y_obj;
-        if (json_object_object_get_ex(coord_obj, "x", &x_obj) &&
-            json_object_object_get_ex(coord_obj, "y", &y_obj))
+        // clang-format on
+        if (json_object_object_get_ex(coord_obj, "x", &x_obj) && json_object_object_get_ex(coord_obj, "y", &y_obj))
         {
             drone.coord.x = json_object_get_int(x_obj);
             drone.coord.y = json_object_get_int(y_obj);
@@ -293,12 +313,13 @@ void *handle_drone_client(void *arg)
 
     // Add the drone to the list
     pthread_mutex_init(&drone.lock, NULL);
-    
+
     // Initialize the socket field with the client socket
     drone.socket = sock;
-    
-    Node *node = drones->add(drones, &drone);
 
+    // clang-format off
+    Node *node = drones->add(drones, &drone);
+    // clang-format on
     if (!node)
     {
         fprintf(stderr, "Failed to add drone %d to list\n", drone.id);
@@ -310,6 +331,7 @@ void *handle_drone_client(void *arg)
     }
 
     // Get a pointer to the actual drone in the list
+    // clang-format off
     Drone *d = (Drone *)node->data;
 
     // Send HANDSHAKE_ACK response
@@ -327,35 +349,39 @@ void *handle_drone_client(void *arg)
     const char *ack_str = json_object_to_json_string(handshake_ack);
     size_t ack_size = strlen(ack_str);
     ssize_t bytes_sent = send(sock, ack_str, ack_size, 0);
-    
-    if (bytes_sent > 0) {
+    // clang-format on
+
+    if (bytes_sent > 0)
+    {
         perf_record_heartbeat(bytes_sent);
-        
+
         // Record handshake response time
         clock_gettime(CLOCK_MONOTONIC, &end_time);
-        double response_time = (end_time.tv_sec - start_time.tv_sec) * 1000.0 + 
-                              (end_time.tv_nsec - start_time.tv_nsec) / 1000000.0;
+        double response_time = (end_time.tv_sec - start_time.tv_sec) * 1000.0 +
+                               (end_time.tv_nsec - start_time.tv_nsec) / 1000000.0;
         perf_record_response_time(response_time);
-        
-        printf("Handshake acknowledgment sent to drone %d (%zd bytes, %.2fms)\n", 
-               d->id, bytes_sent, response_time);
-    } else {
+
+        printf("Handshake acknowledgment sent to drone %d (%zd bytes, %.2fms)\n", d->id, bytes_sent, response_time);
+    }
+    else
+    {
         perf_record_error();
     }
-    
+
     json_object_put(handshake_ack);
 
     // Main loop to handle communication with this drone
     while (1)
     {
         clock_gettime(CLOCK_MONOTONIC, &start_time);
-        
+
         bytes_received = recv(sock, buffer, sizeof(buffer) - 1, 0);
         if (bytes_received <= 0)
         {
             if (bytes_received == 0)
                 printf("Drone %d disconnected\n", d->id);
-            else {
+            else
+            {
                 perror("Error receiving from drone");
                 perf_record_error();
             }
@@ -365,7 +391,7 @@ void *handle_drone_client(void *arg)
             d->status = DISCONNECTED;
             pthread_mutex_unlock(&d->lock);
 
-            if(drones->removenode(drones, node) == 0)
+            if (drones->removenode(drones, node) == 0)
             {
                 printf("Drone %d removed from list\n", d->id);
             }
@@ -383,41 +409,52 @@ void *handle_drone_client(void *arg)
         perf_record_status_update(bytes_received);
 
         // Try to parse multiple JSON messages in a single buffer
-        char* json_start = buffer;
-        char* json_end = NULL;
+        char *json_start = buffer;
+        char *json_end = NULL;
         int json_depth = 0;
         int in_string = 0;
         int escape_next = 0;
-        
-        for (int i = 0; i < bytes_received; i++) {
+
+        for (int i = 0; i < bytes_received; i++)
+        {
             // Track JSON structure to find complete objects
-            if (escape_next) {
+            if (escape_next)
+            {
                 escape_next = 0;
                 continue;
             }
-            
-            if (buffer[i] == '\\' && !escape_next) {
+
+            if (buffer[i] == '\\' && !escape_next)
+            {
                 escape_next = 1;
                 continue;
             }
-            
-            if (buffer[i] == '"' && !escape_next) {
+
+            if (buffer[i] == '"' && !escape_next)
+            {
                 in_string = !in_string;
                 continue;
             }
-            
-            if (!in_string) {
-                if (buffer[i] == '{') {
-                    if (json_depth == 0) {
+
+            if (!in_string)
+            {
+                if (buffer[i] == '{')
+                {
+                    if (json_depth == 0)
+                    {
                         json_start = buffer + i;
                     }
                     json_depth++;
-                } else if (buffer[i] == '}') {
+                }
+                else if (buffer[i] == '}')
+                {
                     json_depth--;
-                    if (json_depth == 0) {
+                    if (json_depth == 0)
+                    {
                         json_end = buffer + i + 1;
-                        
+
                         // We found a complete JSON object, process it
+                        // clang-format off
                         char temp = *json_end;
                         *json_end = '\0';
                         
@@ -425,100 +462,123 @@ void *handle_drone_client(void *arg)
                         parsed_json = json_tokener_parse(json_start);
                         
                         *json_end = temp; // Restore the buffer
-                        
-                        if (parsed_json == NULL) {
+                        // clang-format on
+                        if (parsed_json == NULL)
+                        {
                             printf("Failed to parse JSON data from drone %d\n", d->id);
                             perf_record_error();
                             continue;
                         }
-                        
+
                         // Handle different message types
-                        if (json_object_object_get_ex(parsed_json, "type", &type_obj)) {
+                        if (json_object_object_get_ex(parsed_json, "type", &type_obj))
+                        {
+                            // clang-format off
                             const char *msg_type = json_object_get_string(type_obj);
-                            
-                            if (strcmp(msg_type, "STATUS_UPDATE") == 0) {
+                            // clang-format on
+                            if (strcmp(msg_type, "STATUS_UPDATE") == 0)
+                            {
                                 // Handle status update
                                 pthread_mutex_lock(&d->lock);
-                                
+
                                 // Update drone location
+                                // clang-format off
                                 struct json_object *location_obj;
-                                if (json_object_object_get_ex(parsed_json, "location", &location_obj)) {
+                                // clang-format on
+                                if (json_object_object_get_ex(parsed_json, "location", &location_obj))
+                                {
+                                    // clang-format off
                                     struct json_object *x_obj, *y_obj;
+                                    // clang-format on
                                     if (json_object_object_get_ex(location_obj, "x", &x_obj) &&
-                                        json_object_object_get_ex(location_obj, "y", &y_obj)) {
+                                        json_object_object_get_ex(location_obj, "y", &y_obj))
+                                    {
                                         d->coord.x = json_object_get_int(x_obj);
                                         d->coord.y = json_object_get_int(y_obj);
                                     }
                                 }
-                                
+
                                 // Update status
+                                // clang-format off
                                 struct json_object *status_obj;
-                                if (json_object_object_get_ex(parsed_json, "status", &status_obj)) {
+                                // clang-format on
+                                if (json_object_object_get_ex(parsed_json, "status", &status_obj))
+                                {
+                                    // clang-format off
                                     const char *status_str = json_object_get_string(status_obj);
+                                    // clang-format on
                                     if (strcmp(status_str, "idle") == 0)
                                         d->status = IDLE;
                                     else if (strcmp(status_str, "busy") == 0)
                                         d->status = ON_MISSION;
                                 }
-                                
+
                                 // Update last update time
                                 time(&t);
                                 localtime_r(&t, &d->last_update);
-                                
+
                                 pthread_mutex_unlock(&d->lock);
-                                
+
                                 // Record processing time
                                 clock_gettime(CLOCK_MONOTONIC, &end_time);
-                                double processing_time = (end_time.tv_sec - start_time.tv_sec) * 1000.0 + 
-                                                        (end_time.tv_nsec - start_time.tv_nsec) / 1000000.0;
+                                double processing_time = (end_time.tv_sec - start_time.tv_sec) * 1000.0 +
+                                                         (end_time.tv_nsec - start_time.tv_nsec) / 1000000.0;
                                 perf_record_response_time(processing_time);
                             }
-                            else if (strcmp(msg_type, "MISSION_COMPLETE") == 0) {
+                            else if (strcmp(msg_type, "MISSION_COMPLETE") == 0)
+                            {
                                 // Handle mission completion
                                 printf("Received MISSION_COMPLETE message from drone %d\n", d->id);
-                                
+
                                 // Get target location if provided in the message
                                 Coord target_coord = d->target; // Default to current target
+                                // clang-format off
                                 struct json_object *target_location;
-                                if (json_object_object_get_ex(parsed_json, "target_location", &target_location)) {
+                                // clang-format on
+                                if (json_object_object_get_ex(parsed_json, "target_location", &target_location))
+                                {
+                                    // clang-format off
                                     struct json_object *x_obj, *y_obj;
+                                    // clang-format on
                                     if (json_object_object_get_ex(target_location, "x", &x_obj) &&
-                                        json_object_object_get_ex(target_location, "y", &y_obj)) {
+                                        json_object_object_get_ex(target_location, "y", &y_obj))
+                                    {
                                         target_coord.x = json_object_get_int(x_obj);
                                         target_coord.y = json_object_get_int(y_obj);
                                     }
                                 }
-                                
+
                                 pthread_mutex_lock(&d->lock);
                                 d->status = IDLE;
                                 pthread_mutex_unlock(&d->lock);
-                                    
+
                                 // Call update_drone_status with explicit target coordinates
                                 update_drone_status(d, &target_coord);
-                                
+
                                 // Record mission completion processing time
                                 clock_gettime(CLOCK_MONOTONIC, &end_time);
-                                double processing_time = (end_time.tv_sec - start_time.tv_sec) * 1000.0 + 
-                                                        (end_time.tv_nsec - start_time.tv_nsec) / 1000000.0;
+                                double processing_time = (end_time.tv_sec - start_time.tv_sec) * 1000.0 +
+                                                         (end_time.tv_nsec - start_time.tv_nsec) / 1000000.0;
                                 perf_record_response_time(processing_time);
                             }
-                            else if (strcmp(msg_type, "HEARTBEAT_RESPONSE") == 0) {
+                            else if (strcmp(msg_type, "HEARTBEAT_RESPONSE") == 0)
+                            {
                                 // Update last contact time
                                 pthread_mutex_lock(&d->lock);
                                 time(&t);
                                 localtime_r(&t, &d->last_update);
                                 pthread_mutex_unlock(&d->lock);
-                                
+
                                 // Record heartbeat response time
                                 clock_gettime(CLOCK_MONOTONIC, &end_time);
-                                double heartbeat_time = (end_time.tv_sec - start_time.tv_sec) * 1000.0 + 
-                                                       (end_time.tv_nsec - start_time.tv_nsec) / 1000000.0;
+                                double heartbeat_time = (end_time.tv_sec - start_time.tv_sec) * 1000.0 +
+                                                        (end_time.tv_nsec - start_time.tv_nsec) / 1000000.0;
                                 perf_record_response_time(heartbeat_time);
                             }
                         }
-                        
+
                         json_object_put(parsed_json);
-                        
+
                         // Move to next character after this JSON object
                         json_start = json_end;
                     }
@@ -539,7 +599,9 @@ void *handle_drone_client(void *arg)
  * @param drone Pointer to drone that completed a mission
  * @param target Coordinates of the completed mission target
  */
+// clang-format off
 void update_drone_status(Drone *drone, Coord *target)
+// clang-format on
 {
     if (!drone || !target)
     {
@@ -556,8 +618,7 @@ void update_drone_status(Drone *drone, Coord *target)
     for (int j = 0; j < num_survivors; j++)
     {
         // Check for survivors being helped (status 1) that match the drone's target location
-        if (survivor_array[j].status == 1 &&
-            survivor_array[j].coord.x == target->x &&
+        if (survivor_array[j].status == 1 && survivor_array[j].coord.x == target->x &&
             survivor_array[j].coord.y == target->y)
         {
             // Mark survivor as rescued
@@ -568,18 +629,18 @@ void update_drone_status(Drone *drone, Coord *target)
             time(&t);
             localtime_r(&t, &survivor_array[j].helped_time);
 
-            printf("Server updated survivor %d status to rescued by drone %d\n", 
-                   j, drone->id);
-                   
+            printf("Server updated survivor %d status to rescued by drone %d\n", j, drone->id);
+
             found_survivor = 1;
             break;
         }
     }
     pthread_mutex_unlock(&survivors_mutex);
 
-    if (!found_survivor) {
-        printf("Warning: No matching survivor found for drone %d at target (%d, %d)\n",
-               drone->id, target->x, target->y);
+    if (!found_survivor)
+    {
+        printf(
+            "Warning: No matching survivor found for drone %d at target (%d, %d)\n", drone->id, target->x, target->y);
         perf_record_error();
     }
 
@@ -594,17 +655,21 @@ void update_drone_status(Drone *drone, Coord *target)
 void cleanup_drones()
 {
     // Traverse the list and clean up each drone
+    // clang-format off
     Node *current = drones->head;
+    // clang-format on
 
     while (current != NULL)
     {
+        // clang-format off
         Drone *d = (Drone *)current->data;
-
+        // clang-format on
         // Cancel the drone's thread
         pthread_cancel(d->thread_id);
 
         // Close the socket if it's open
-        if (d->socket > 0) {
+        if (d->socket > 0)
+        {
             close(d->socket);
             perf_record_connection(0); // Record disconnection
         }

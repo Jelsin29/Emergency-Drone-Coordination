@@ -56,6 +56,7 @@
 #include <unistd.h>
 
 // Global lists defined in globals.h
+// clang-format off
 List *survivors = NULL;
 List *helpedsurvivors = NULL;
 List *drones = NULL;
@@ -77,7 +78,7 @@ int helped_count = 0;
 int rescued_count = 0;
 int idle_drones = 0;
 int mission_drones = 0;
-
+// clang-format on
 /**
  * Signal handler for graceful shutdown
  * @param sig Signal number
@@ -150,7 +151,7 @@ void update_simulation_stats()
     helped_count = 0;
     idle_drones = 0;
     mission_drones = 0;
-    
+
     // Count survivors by status
     pthread_mutex_lock(&survivors_mutex);
     for (int i = 0; i < num_survivors; i++)
@@ -170,29 +171,35 @@ void update_simulation_stats()
         }
     }
     pthread_mutex_unlock(&survivors_mutex);
-    
+
     // Count drones by status from the list
     pthread_mutex_lock(&drones->lock);
-    
+
     // Iterate through all drones in the list
+    // clang-format off
     Node* current = drones->head;
-    while (current != NULL) {
+    // clang-format on
+    while (current != NULL)
+    {
+        // clang-format off
         Drone* d = (Drone*)current->data;
-        
+        // clang-format on
         // Lock this specific drone to check its status
         pthread_mutex_lock(&d->lock);
-        
-        if (d->status == IDLE) {
+
+        if (d->status == IDLE)
+        {
             idle_drones++;
         }
-        else if (d->status == ON_MISSION) {
+        else if (d->status == ON_MISSION)
+        {
             mission_drones++;
         }
-        
+
         pthread_mutex_unlock(&d->lock);
         current = current->next;
     }
-    
+
     pthread_mutex_unlock(&drones->lock);
 }
 
@@ -206,7 +213,8 @@ int main()
 
     // Initialize performance monitoring with CSV logging
     throughput_monitor = start_perf_monitor("drone_server_metrics.csv");
-    if (throughput_monitor == 0) {
+    if (throughput_monitor == 0)
+    {
         fprintf(stderr, "Failed to start performance monitoring\n");
         return 1;
     }
@@ -311,12 +319,18 @@ int main()
         draw_info_panel();
 
         // Print statistics every 50 frames (with throughput info)
-        if (frame_count % 50 == 0) {
+        if (frame_count % 50 == 0)
+        {
             printf("Stats: Waiting: %d, Being Helped: %d, Rescued: %d, Drones: Idle=%d, On Mission=%d\n",
-                   waiting_count, helped_count, rescued_count, idle_drones, mission_drones);
-            
+                   waiting_count,
+                   helped_count,
+                   rescued_count,
+                   idle_drones,
+                   mission_drones);
+
             // Log current performance metrics every 100 frames
-            if (frame_count % 100 == 0) {
+            if (frame_count % 100 == 0)
+            {
                 log_perf_metrics();
             }
         }

@@ -1,0 +1,125 @@
+---
+Language: Cpp
+
+# Base style - start with LLVM and customize for your style
+BasedOnStyle: LLVM
+
+# Indentation settings to match your code
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+
+# Column limit to accommodate your long printf statements and Doxygen comments
+ColumnLimit: 120
+
+# Brace placement - configure for Allman style
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterClass: false
+  AfterControlStatement: true
+  AfterEnum: false
+  AfterFunction: true
+  AfterNamespace: false
+  AfterStruct: false
+  AfterUnion: false
+  BeforeCatch: true
+  BeforeElse: true
+  IndentBraces: false
+
+# Function formatting - matches your clean style
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+
+# Spacing - matches your clean C style
+SpaceAfterCStyleCast: false
+SpaceBeforeParens: ControlStatements
+SpaceInEmptyParentheses: false
+SpacesInCStyleCastParentheses: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+SpaceBeforeAssignmentOperators: true
+
+# Parameter and argument handling for your function calls
+AllowAllParametersOfDeclarationOnNextLine: true
+AllowAllArgumentsOnNextLine: true
+BinPackArguments: false
+BinPackParameters: false
+
+# Alignment - clean and consistent
+AlignConsecutiveDeclarations: false
+AlignConsecutiveAssignments: false
+AlignOperands: true
+AlignTrailingComments: true
+AlignEscapedNewlines: Right
+
+# Include handling - preserve your careful organization
+SortIncludes: false
+IncludeBlocks: Preserve
+
+# CRITICAL: Preserve your comprehensive Doxygen comments exactly as written
+ReflowComments: false
+CommentPragmas: '^(\\*|/\\*\\*|\\*\\s*@|\\*\\s*\\\\|\\*\\s*\\{|\\*\\s*\\})'
+
+# String and line breaking
+BreakStringLiterals: true
+AlwaysBreakBeforeMultilineStrings: false
+BreakBeforeBinaryOperators: None
+BreakBeforeTernaryOperators: true
+
+# Control structures and function formatting
+BreakConstructorInitializers: BeforeColon
+AlwaysBreakAfterDefinitionReturnType: None
+AlwaysBreakAfterReturnType: None
+
+# Penalties - balanced for readability
+PenaltyBreakAssignment: 150
+PenaltyBreakBeforeFirstCallParameter: 19
+PenaltyBreakComment: 300
+PenaltyBreakFirstLessLess: 120
+PenaltyBreakString: 1000
+PenaltyExcessCharacter: 1000000
+PenaltyReturnTypeOnItsOwnLine: 60
+
+# Preprocessor directives
+IndentPPDirectives: None
+
+# Empty lines and spacing - matches your clean style
+KeepEmptyLinesAtTheStartOfBlocks: true
+MaxEmptyLinesToKeep: 2
+
+# Statement formatting
+IndentCaseLabels: true
+SpacesBeforeTrailingComments: 1
+
+# Macro and namespace handling
+AlignConsecutiveMacros: false
+NamespaceIndentation: None
+FixNamespaceComments: false
+
+# Function call formatting to handle your style
+ExperimentalAutoDetectBinPacking: false
+
+# Ensure proper spacing around operators and pointers
+SpaceAroundPointerQualifiers: Default
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeSquareBrackets: false
+
+# Control flow and conditional formatting
+IndentGotoLabels: true
+
+# Ensure consistent formatting for your thread-safe patterns
+DeriveLineEnding: true
+DerivePointerAlignment: false
+DisableFormat: false
+
+# Additional settings for your specific style
+AllowShortCaseLabelsOnASingleLine: false
+BreakAfterJavaFieldAnnotations: false
+CompactNamespaces: false
+ConstructorInitializerAllOnOneLineOrOnePerLine: false
+ConstructorInitializerIndentWidth: 4
+ContinuationIndentWidth: 4
+Cpp11BracedListStyle: false

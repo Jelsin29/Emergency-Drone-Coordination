@@ -64,7 +64,9 @@ int calculate_distance(Coord a, Coord b)
  * @param drone Pointer to the drone to assign
  * @param survivor_index Index of the survivor to rescue
  */
+// clang-format off
 void assign_mission(Drone *drone, int survivor_index)
+// clang-format on
 {
     if (!drone || survivor_index < 0 || survivor_index >= num_survivors)
     {
@@ -103,6 +105,7 @@ void assign_mission(Drone *drone, int survivor_index)
         if (drone->socket > 0)
         {
             // Create a mission assignment message according to the protocol
+            // clang-format off
             struct json_object *mission = json_object_new_object();
             json_object_object_add(mission, "type", json_object_new_string("ASSIGN_MISSION"));
 
@@ -127,25 +130,29 @@ void assign_mission(Drone *drone, int survivor_index)
             const char *mission_str = json_object_to_json_string(mission);
             size_t mission_size = strlen(mission_str);
             ssize_t bytes_sent = send(drone->socket, mission_str, mission_size, 0);
+            // clang-format on
 
             if (bytes_sent > 0)
             {
                 perf_record_mission_assigned(bytes_sent);
-                
+
                 // Record mission assignment response time
                 clock_gettime(CLOCK_MONOTONIC, &end_time);
-                double response_time = (end_time.tv_sec - start_time.tv_sec) * 1000.0 + 
-                                      (end_time.tv_nsec - start_time.tv_nsec) / 1000000.0;
+                double response_time = (end_time.tv_sec - start_time.tv_sec) * 1000.0 +
+                                       (end_time.tv_nsec - start_time.tv_nsec) / 1000000.0;
                 perf_record_response_time(response_time);
-                
-                printf("Mission assigned to drone %d for survivor %d (%zd bytes, %.2fms)\n", 
-                       drone->id, survivor_index, bytes_sent, response_time);
+
+                printf("Mission assigned to drone %d for survivor %d (%zd bytes, %.2fms)\n",
+                       drone->id,
+                       survivor_index,
+                       bytes_sent,
+                       response_time);
             }
             else
             {
                 perror("Failed to send mission assignment");
                 perf_record_error();
-                
+
                 // Rollback the status changes if sending failed
                 drone->status = IDLE;
                 survivor_array[survivor_index].status = 0;
@@ -158,12 +165,14 @@ void assign_mission(Drone *drone, int survivor_index)
         {
             // For local drones (not networked), just record the assignment
             clock_gettime(CLOCK_MONOTONIC, &end_time);
-            double response_time = (end_time.tv_sec - start_time.tv_sec) * 1000.0 + 
-                                  (end_time.tv_nsec - start_time.tv_nsec) / 1000000.0;
+            double response_time = (end_time.tv_sec - start_time.tv_sec) * 1000.0 +
+                                   (end_time.tv_nsec - start_time.tv_nsec) / 1000000.0;
             perf_record_response_time(response_time);
-            
-            printf("Local mission assigned to drone %d for survivor %d (%.2fms)\n", 
-                   drone->id, survivor_index, response_time);
+
+            printf("Local mission assigned to drone %d for survivor %d (%.2fms)\n",
+                   drone->id,
+                   survivor_index,
+                   response_time);
         }
     }
     else
@@ -171,7 +180,9 @@ void assign_mission(Drone *drone, int survivor_index)
         // Mission assignment failed - record as error
         perf_record_error();
         printf("Failed to assign mission: drone %d status=%d, survivor %d status=%d\n",
-               drone->id, drone->status, survivor_index, 
+               drone->id,
+               drone->status,
+               survivor_index,
                survivor_index < num_survivors ? survivor_array[survivor_index].status : -1);
     }
 
@@ -188,7 +199,9 @@ void assign_mission(Drone *drone, int survivor_index)
  * @param survivor_index Index of the survivor
  * @return Pointer to the closest idle drone, or NULL if none available
  */
+// clang-format off
 Drone *find_closest_idle_drone(int survivor_index)
+// clang-format on
 {
     if (survivor_index < 0 || survivor_index >= num_survivors)
     {
@@ -196,7 +209,7 @@ Drone *find_closest_idle_drone(int survivor_index)
         perf_record_error();
         return NULL;
     }
-
+    //clang-format on
     Drone *closest_drone = NULL;
     int min_distance = INT_MAX;
 
@@ -210,9 +223,11 @@ Drone *find_closest_idle_drone(int survivor_index)
     // Iterate through all drones in the list to find the closest idle one
     Node *current = drones->head;
     while (current != NULL)
+    // clang-format on
     {
+        //clang-format off
         Drone *d = (Drone *)current->data;
-
+        //clang-format on
         // Lock this specific drone to check its status
         pthread_mutex_lock(&d->lock);
 
@@ -243,7 +258,9 @@ Drone *find_closest_idle_drone(int survivor_index)
  * @param drone Pointer to the drone
  * @return Index of the closest waiting survivor, or -1 if none available
  */
+// clang-format off
 int find_closest_waiting_survivor(Drone *drone)
+// clang-format on
 {
     if (!drone)
     {
@@ -294,7 +311,9 @@ int find_closest_waiting_survivor(Drone *drone)
  * @param args Unused parameter
  * @return NULL when thread terminates
  */
+// clang-format off
 void *drone_centric_ai_controller(void *args)
+// clang-format on
 {
     (void)args; // Unused parameter
 
@@ -302,18 +321,17 @@ void *drone_centric_ai_controller(void *args)
     sleep(3);
 
     printf("Starting drone-centric AI controller with throughput monitoring...\n");
-    
+
     // Debug: Count how many survivors and drones we have at the start
     pthread_mutex_lock(&drones->lock);
     int initial_drone_count = drones->number_of_elements;
     pthread_mutex_unlock(&drones->lock);
-    
+
     pthread_mutex_lock(&survivors_mutex);
     int initial_survivor_count = num_survivors;
     pthread_mutex_unlock(&survivors_mutex);
-    
-    printf("AI Controller: Initial count - Drones: %d, Survivors: %d\n", 
-           initial_drone_count, initial_survivor_count);
+
+    printf("AI Controller: Initial count - Drones: %d, Survivors: %d\n", initial_drone_count, initial_survivor_count);
 
     int ai_cycle_count = 0;
 
@@ -321,52 +339,60 @@ void *drone_centric_ai_controller(void *args)
     {
         ai_cycle_count++;
         int missions_assigned = 0;
-        
+
         // Measure AI processing time every 10 cycles
         struct timespec ai_start, ai_end;
-        if (ai_cycle_count % 10 == 0) {
+        if (ai_cycle_count % 10 == 0)
+        {
             clock_gettime(CLOCK_MONOTONIC, &ai_start);
         }
-        
+
         // Debug: Count survivors that are waiting for help
         int waiting_survivors = 0;
         pthread_mutex_lock(&survivors_mutex);
-        for (int i = 0; i < num_survivors; i++) {
-            if (survivor_array[i].status == 0) {
+        for (int i = 0; i < num_survivors; i++)
+        {
+            if (survivor_array[i].status == 0)
+            {
                 waiting_survivors++;
             }
         }
         pthread_mutex_unlock(&survivors_mutex);
-        
+
         // Debug: Count idle drones
         int idle_drone_count = 0;
         pthread_mutex_lock(&drones->lock);
         Node *count_current = drones->head;
-        while (count_current != NULL) {
+        while (count_current != NULL)
+        {
             Drone *d = (Drone *)count_current->data;
             pthread_mutex_lock(&d->lock);
-            if (d->status == IDLE) {
+            if (d->status == IDLE)
+            {
                 idle_drone_count++;
             }
             pthread_mutex_unlock(&d->lock);
             count_current = count_current->next;
         }
-        
+
         // Only print debug info if there are both idle drones and waiting survivors
-        if (idle_drone_count > 0 && waiting_survivors > 0) {
-            printf("AI Controller: Found %d idle drones and %d waiting survivors\n", 
-                  idle_drone_count, waiting_survivors);
+        if (idle_drone_count > 0 && waiting_survivors > 0)
+        {
+            printf(
+                "AI Controller: Found %d idle drones and %d waiting survivors\n", idle_drone_count, waiting_survivors);
         }
         pthread_mutex_unlock(&drones->lock);
 
         // First phase: For each idle drone, find the closest survivor and assign a mission
         pthread_mutex_lock(&drones->lock);
-
+        // clang-format off
         Node *current = drones->head;
+        // clang-format on
         while (current != NULL)
         {
+            // clang-format off
             Drone *d = (Drone *)current->data;
-
+            // // clang-format on
             // Lock this specific drone to check its status
             pthread_mutex_lock(&d->lock);
 
@@ -426,7 +452,9 @@ void *drone_centric_ai_controller(void *args)
  * @param args Unused parameter
  * @return NULL when thread terminates
  */
+// clang-format off
 void *ai_controller(void *args)
+// clang-format on
 {
     (void)args; // Unused parameter
 
@@ -434,13 +462,13 @@ void *ai_controller(void *args)
     sleep(3);
 
     printf("Starting survivor-centric AI controller with throughput monitoring...\n");
-    
+
     int ai_cycle_count = 0;
 
     while (1)
     {
         ai_cycle_count++;
-        
+
         // Measure AI processing time
         struct timespec ai_start, ai_end;
         clock_gettime(CLOCK_MONOTONIC, &ai_start);
@@ -466,8 +494,9 @@ void *ai_controller(void *args)
             pthread_mutex_unlock(&survivors_mutex);
 
             // Find the closest idle drone
+            // clang-format off
             Drone *drone = find_closest_idle_drone(i);
-
+            // clang-format on
             // If an idle drone was found, assign it to help this survivor
             if (drone != NULL)
             {
@@ -483,10 +512,14 @@ void *ai_controller(void *args)
         pthread_mutex_lock(&drones->lock);
 
         // Iterate through all drones in the list
+        // clang-format off
         Node *current = drones->head;
+        // clang-format on
         while (current != NULL)
         {
+            // clang-format off
             Drone *d = (Drone *)current->data;
+            // clang-format on
 
             // Lock this specific drone to check its status
             pthread_mutex_lock(&d->lock);
@@ -500,8 +533,7 @@ void *ai_controller(void *args)
                     pthread_mutex_lock(&survivors_mutex);
                     for (int j = 0; j < num_survivors; j++)
                     {
-                        if (survivor_array[j].status == 1 &&
-                            survivor_array[j].coord.x == d->target.x &&
+                        if (survivor_array[j].status == 1 && survivor_array[j].coord.x == d->target.x &&
                             survivor_array[j].coord.y == d->target.y)
                         {
                             // Mark survivor as rescued
@@ -517,8 +549,7 @@ void *ai_controller(void *args)
                             // Reset drone to idle
                             d->status = IDLE;
 
-                            printf("AI detected mission completion: Drone %d rescued survivor %d\n", 
-                                   d->id, j);
+                            printf("AI detected mission completion: Drone %d rescued survivor %d\n", d->id, j);
 
                             break;
                         }
@@ -535,14 +566,18 @@ void *ai_controller(void *args)
 
         // Record AI processing time
         clock_gettime(CLOCK_MONOTONIC, &ai_end);
-        double ai_processing_time = (ai_end.tv_sec - ai_start.tv_sec) * 1000.0 + 
-                                   (ai_end.tv_nsec - ai_start.tv_nsec) / 1000000.0;
+        double ai_processing_time = (ai_end.tv_sec - ai_start.tv_sec) * 1000.0 +
+                                    (ai_end.tv_nsec - ai_start.tv_nsec) / 1000000.0;
         perf_record_response_time(ai_processing_time);
 
         // Log AI performance every 10 cycles
-        if (ai_cycle_count % 10 == 0) {
-            printf("AI cycle %d: Assigned %d missions, completed %d missions in %.2fms\n", 
-                   ai_cycle_count, missions_assigned, missions_completed, ai_processing_time);
+        if (ai_cycle_count % 10 == 0)
+        {
+            printf("AI cycle %d: Assigned %d missions, completed %d missions in %.2fms\n",
+                   ai_cycle_count,
+                   missions_assigned,
+                   missions_completed,
+                   ai_processing_time);
         }
 
         // Sleep to avoid excessive CPU usage

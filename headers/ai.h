@@ -88,6 +88,7 @@
  * @see drone_centric_ai_controller() for alternative strategy
  * @see assign_mission() for mission creation details
  */
+// clang-format off
 void* ai_controller(void *args);
 
 /**
@@ -131,8 +132,9 @@ void* ai_controller(void *args);
  * @see ai_controller() for survivor-centric alternative
  * @see find_closest_waiting_survivor() for core algorithm
  */
+// clang-format off
 void* drone_centric_ai_controller(void *args);
-
+// clang-format on
 /** @} */ // end of ai_controllers group
 
 /**
@@ -289,7 +291,7 @@ int calculate_distance(Coord a, Coord b);
  * @see calculate_distance() for distance calculations
  * @see assign_mission() for mission creation using result
  */
-Drone* find_closest_idle_drone(int survivor_index);
+Drone *find_closest_idle_drone(int survivor_index);
 
 /** @} */ // end of drone_selection group
 
@@ -346,10 +348,11 @@ Drone* find_closest_idle_drone(int survivor_index);
  * @see calculate_distance() for distance calculations
  * @see assign_mission() for mission creation using result
  */
-int find_closest_waiting_survivor(Drone* drone);
+int find_closest_waiting_survivor(Drone *drone);
 
 /** @} */ // end of survivor_selection group
 
 /** @} */ // end of ai_algorithms group
+// clang-format on
 
 #endif // AI_H

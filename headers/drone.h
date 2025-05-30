@@ -75,14 +75,14 @@ typedef enum {
  * @warning Always lock the mutex before accessing/modifying drone properties
  */
 typedef struct drone {
-    int id;                     /**< Unique identifier for this drone (auto-assigned) */
-    pthread_t thread_id;        /**< Thread ID for drone's operation handler */
-    DroneStatus status;         /**< Current operational status */
-    Coord coord;                /**< Current position on the map grid */
-    Coord target;               /**< Target coordinates for current mission */
-    struct tm last_update;      /**< Timestamp of last communication or status update */
-    pthread_mutex_t lock;       /**< Mutex for thread-safe property access */
-    int socket;                 /**< Network socket for client communication (-1 for local drones) */
+    int id;                /**< Unique identifier for this drone (auto-assigned) */
+    pthread_t thread_id;   /**< Thread ID for drone's operation handler */
+    DroneStatus status;    /**< Current operational status */
+    Coord coord;           /**< Current position on the map grid */
+    Coord target;          /**< Target coordinates for current mission */
+    struct tm last_update; /**< Timestamp of last communication or status update */
+    pthread_mutex_t lock;  /**< Mutex for thread-safe property access */
+    int socket;            /**< Network socket for client communication (-1 for local drones) */
 } Drone;
 
 /**
@@ -135,8 +135,9 @@ extern int num_drones;
  * 
  * @see handle_drone_client() for per-client communication
  */
+// clang-format off
 void* drone_server(void *arg);
-
+// clang-format on
 /**
  * @brief Handle communication with a connected drone client
  * 
